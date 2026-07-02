@@ -1,0 +1,46 @@
+---
+description: Definition of done — full production checklist before feature or sprint completion
+alwaysApply: true
+---
+
+# Definition of Done
+
+A feature is **COMPLETE** only when **every** item below is satisfied. Otherwise, do **not** say "the feature is complete."
+
+## Checklist
+
+```text
+✓ Requirements understood and acceptance criteria met
+✓ Architecture approved (review gates passed)
+✓ Database reviewed (if schema changes)
+✓ API documented and contract followed (if API work)
+✓ Backend complete (if applicable)
+✓ Frontend complete with all UI states (if applicable)
+✓ Unit tests pass
+✓ Integration tests pass
+✓ E2E tests pass (if user-facing flow)
+✓ Security reviewed (security-engineer)
+✓ Performance reviewed (performance-reviewer, if API/hot path)
+✓ Refactor applied (if review required changes)
+✓ Documentation updated (docs/ + Docs/ as applicable)
+✓ ADR written (if architectural decision)
+✓ Code reviewed (code-reviewer)
+✓ Build passes
+✓ Lint passes
+✓ Type check passes
+✓ Notion task set to Done
+✓ Ready for production
+```
+
+## Verification order
+
+```text
+Build → Lint → Types → Unit → Integration → E2E
+→ Performance → Security → Code review → DoD → Notion Done
+```
+
+## Code review dimensions
+
+Architecture · Naming · Performance · Security · Testing · Readability · Maintainability · Scalability
+
+Improve implementation based on findings before marking complete.

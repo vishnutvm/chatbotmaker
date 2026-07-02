@@ -1,0 +1,34 @@
+name: Deploy API
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/api/**'
+      - 'packages/types/**'
+      - 'packages/config/**'
+      - 'docker/**'
+      - 'railway.toml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-api.yml'
+
+concurrency:
+  group: deploy-api-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Enable: set repo variable ENABLE_RAILWAY_GHA_DEPLOY=true and secret RAILWAY_TOKEN.
+    # Alternative: Railway native GitHub auto-deploy (recommended for MVP).
+    if: vars.ENABLE_RAILWAY_GHA_DEPLOY == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service "${{ vars.RAILWAY_SERVICE_NAME || 'api' }}" --detach

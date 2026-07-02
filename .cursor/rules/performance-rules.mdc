@@ -1,0 +1,31 @@
+---
+description: Performance rules — indexes, caching, pagination, and resource efficiency
+alwaysApply: true
+---
+
+# Performance Rules
+
+Always consider performance during design and implementation.
+
+## Database & Queries
+
+- Add appropriate **database indexes** for query patterns.
+- Prevent **N+1 queries** — use joins, aggregation, or batch loading.
+- Use **pagination** for list endpoints — never return unbounded result sets.
+- Stream large datasets; avoid loading entire collections into memory.
+
+## Caching & Memory
+
+- Use **Redis** for session, rate-limit, and hot-path caches.
+- Set TTLs and eviction policies; avoid unbounded cache growth.
+- Monitor **memory usage** in API workers and background jobs.
+
+## Frontend & API
+
+- Use **lazy loading** and code splitting for heavy UI.
+- **Chunk** large file uploads and AI responses where applicable.
+- Offload long work to **background jobs** — do not block HTTP requests.
+
+## Optimization Discipline
+
+Optimize only where measurements or clear bottlenecks justify it. Profile before micro-optimizing.

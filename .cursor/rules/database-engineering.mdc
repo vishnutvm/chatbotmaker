@@ -1,0 +1,35 @@
+---
+description: Database engineering — MongoDB schemas, indexes, migrations
+globs: apps/api/**/*.repository.ts,apps/api/**/schemas/**,apps/api/**/entities/**
+alwaysApply: false
+---
+
+# Database Engineering (MongoDB)
+
+Database: MongoDB Atlas. Access only through **repositories** in `apps/api/`.
+
+## Conventions
+
+- Define schemas with validation (Mongoose or equivalent).
+- Add indexes for every query pattern used in production paths.
+- Use transactions for multi-document writes that must be atomic.
+- Project only needed fields — avoid returning full documents in lists.
+- Soft-delete where audit trail is required; hard-delete when GDPR demands it.
+
+## Migrations
+
+- Document schema changes in migration notes.
+- Backfill scripts must be idempotent and runnable in staging first.
+- Never drop fields in production without a deprecation period.
+
+## Query Discipline
+
+- No string-concatenated queries — parameterized only.
+- Paginate with cursor or offset + limit; cap max page size.
+- Monitor slow queries; add indexes before scaling traffic.
+
+## Do Not
+
+- Put business logic in repositories.
+- Access the database from frontend or widget code.
+- Run unbounded `find()` without limits.

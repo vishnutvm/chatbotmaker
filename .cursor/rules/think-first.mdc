@@ -1,0 +1,45 @@
+---
+description: Think-first rule — never write code before requirement analysis and design
+alwaysApply: true
+---
+
+# Think First — Never Start With Code
+
+**Writing code is ~20% of the work.** The other 80% is analysis, design, reviews, testing, and documentation.
+
+## Hard rule
+
+**Never write code immediately.**
+
+Before any implementation:
+
+1. Spend time understanding the requirement
+2. Design the architecture
+3. Identify risks and edge cases
+4. Pass review gates (see `review-gates.mdc`)
+5. Only then write code
+
+## Requirement analysis (Step 1)
+
+Answer before designing:
+
+- What problem are we solving?
+- Which modules are affected?
+- Are there hidden requirements?
+- What edge cases exist?
+- What is out of scope?
+
+## Architecture (Step 2)
+
+Design before coding:
+
+- API contract (use `api-contract-first` skill)
+- Database schema and indexes
+- UI states (empty, loading, error, success)
+- Validation (input and output)
+- Security and tenant isolation
+- Performance targets and cost impact
+
+## If pressured to "just code it"
+
+Stop. Produce a minimal design note first. Quick code without design creates rework.

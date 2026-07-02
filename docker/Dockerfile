@@ -1,0 +1,51 @@
+# syntax=docker/dockerfile:1
+# Production image for apps/api (NestJS) — deploy to Railway or AWS ECS
+
+FROM node:22-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+WORKDIR /app
+
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/types/package.json ./packages/types/
+COPY packages/config/package.json ./packages/config/
+RUN pnpm install --frozen-lockfile --filter @genie/api...
+
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api ./apps/api
+COPY packages/types ./packages/types
+COPY packages/config ./packages/config
+RUN pnpm --filter @genie/api build
+
+FROM base AS prod-deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/types/package.json ./packages/types/
+COPY packages/config/package.json ./packages/config/
+RUN pnpm install --frozen-lockfile --prod --filter @genie/api...
+
+FROM node:22-alpine AS runner
+RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=prod-deps --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=build --chown=nestjs:nodejs /app/apps/api/dist ./apps/api/dist
+COPY --from=build --chown=nestjs:nodejs /app/apps/api/package.json ./apps/api/package.json
+
+USER nestjs
+WORKDIR /app/apps/api
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- "http://127.0.0.1:${PORT:-4000}/health" || exit 1
+
+CMD ["node", "dist/main.js"]

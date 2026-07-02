@@ -1,0 +1,52 @@
+---
+description: Development workflow — design-first delivery, coding standards, and architecture discipline
+alwaysApply: true
+---
+
+# Development Workflow
+
+For every feature, follow this sequence **before writing code**:
+
+1. Understand the business requirement.
+2. Identify all affected modules.
+3. Review the current architecture.
+4. Design the best solution.
+5. Think about scalability.
+6. Think about security.
+7. Think about performance.
+8. Think about maintainability.
+9. Think about cloud cost.
+10. Only after completing the design, begin implementation.
+
+## Before Writing Code
+
+Answer these questions explicitly:
+
+- Is this the best architecture?
+- Will this scale?
+- Can this be reused?
+- Is it secure?
+- Does it follow project conventions?
+- Will another developer understand this?
+- Is there a simpler solution?
+- Is this production ready?
+
+If any answer is **no**, improve the design before writing code.
+
+## Coding Standards
+
+Write production-grade code only.
+
+- Never write quick fixes.
+- Never duplicate code.
+- Always follow SOLID, Clean Architecture, and Clean Code.
+- Always separate responsibilities.
+- Avoid large functions, magic strings, and hardcoded values.
+- Prefer configuration and composition.
+- Use dependency injection.
+- Always validate inputs and handle errors.
+- Always log important events.
+- Write meaningful variable names.
+- Write readable code over clever code.
+- Optimize only where necessary.
+- Never overengineer.

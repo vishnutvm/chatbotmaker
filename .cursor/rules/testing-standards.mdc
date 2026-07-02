@@ -1,0 +1,42 @@
+---
+description: Testing standards — unit, integration, and E2E requirements per feature
+alwaysApply: true
+---
+
+# Testing Standards
+
+Every feature must include tests appropriate to its scope.
+
+## Unit Tests
+
+Cover:
+
+- Business logic in **services**
+- **Utilities** and helpers
+- **Validators** and DTO transformations
+
+## Integration Tests
+
+Cover:
+
+- **API** endpoints (request/response, auth, errors)
+- **Database** operations (repositories, transactions)
+- **Redis** caching and session behavior
+- **AI** module boundaries (mocked providers)
+
+## End-to-End Tests
+
+Cover real user workflows:
+
+- Browser flows (dashboard, marketing where applicable)
+- **Authentication** (login, logout, protected routes)
+- **CRUD** for core entities
+- **Billing** checkout and subscription flows (when applicable)
+- **Knowledge** upload and retrieval (when applicable)
+- **AI** chat and streaming (when applicable)
+
+## Test Quality
+
+- Test behavior, not implementation details.
+- Include failure paths (validation errors, unauthorized, not found).
+- Keep tests deterministic — no flaky timing or network dependencies without mocks.

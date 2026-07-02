@@ -1,0 +1,30 @@
+---
+description: Phase planning — roadmap order; never skip phases
+alwaysApply: true
+---
+
+# Phase Planning
+
+Never jump randomly. Always build according to the roadmap in `Docs/05-mvp-roadmap.md`.
+
+## Build Order
+
+```text
+Phase 1  — Foundation (monorepo, CI, infra scaffold)
+Phase 2  — Authentication
+Phase 3  — Organizations
+Phase 4  — AI
+Phase 5  — Knowledge (RAG)
+Phase 6  — Assistants
+Phase 7  — Widget
+Phase 8  — Billing
+Phase 9  — Analytics
+Phase 10 — Production hardening
+```
+
+## Rules
+
+- **Never skip phases** — e.g. do not build Knowledge (Phase 5) before Authentication (Phase 2).
+- **Never build Phase N+1** dependencies before Phase N exit criteria are met.
+- When scoping work, state which phase and roadmap task it belongs to.
+- If a request conflicts with phase order, explain the dependency and propose the correct sequence.

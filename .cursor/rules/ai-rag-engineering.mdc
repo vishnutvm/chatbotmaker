@@ -1,0 +1,38 @@
+---
+description: AI/RAG engineering — prompts, embeddings, retrieval, streaming
+globs: apps/api/**/ai/**,apps/api/**/rag/**,apps/api/**/knowledge/**
+alwaysApply: false
+---
+
+# AI / RAG Engineering
+
+AI logic lives in dedicated NestJS modules — never scattered across controllers or frontends.
+
+## Module Boundaries
+
+```text
+apps/api/src/modules/ai/        # LLM calls, prompt assembly, streaming
+apps/api/src/modules/rag/       # chunking, embedding, retrieval
+apps/api/src/modules/knowledge/ # document ingestion, storage refs
+```
+
+## Conventions
+
+- Abstract LLM providers behind an interface (OpenAI first; multi-provider later).
+- **Token budget** — trim context, summarize history, cache embeddings.
+- RAG: chunk with overlap, store vectors, retrieve top-k with score threshold.
+- Stream responses via SSE; handle client disconnect gracefully.
+- Log prompt metadata — never log full user documents or secrets.
+
+## Cost & Performance
+
+- Cache embeddings for unchanged documents.
+- Batch embedding jobs in background workers.
+- Use the smallest model that meets quality for each task.
+- Set max tokens and timeout limits on all AI calls.
+
+## Do Not
+
+- Send unfiltered user content directly to prompts without sanitization.
+- Block HTTP threads on long embedding or ingestion jobs.
+- Store API keys in code or expose them to the frontend.

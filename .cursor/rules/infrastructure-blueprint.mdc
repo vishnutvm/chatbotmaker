@@ -1,0 +1,56 @@
+---
+description: Official MVP infrastructure blueprint — Railway, Vercel, abstractions, cost limits
+alwaysApply: true
+---
+
+# Infrastructure Blueprint (Active)
+
+Canonical source: `Docs/04-infrastructure.md`. **Do not deviate without explicit approval.**
+
+## MVP stack
+
+| Layer | Platform |
+|-------|----------|
+| Frontends | Vercel Free (`apps/marketing`, `apps/dashboard`) |
+| API | Railway + Docker (`apps/api`) |
+| Database | MongoDB Atlas (free → M10) |
+| Cache | Memory (dev) → Redis Cloud (prod) — **abstracted** |
+| Storage | AWS S3 |
+| AI | OpenAI via **AI service layer only** |
+| Payments | Stripe |
+| DNS/CDN | Cloudflare |
+
+**Cost target:** &lt; $30/month infrastructure during MVP (excluding OpenAI usage).
+
+## Hard rules
+
+- Never recommend Kubernetes or microservices for MVP.
+- Never introduce cloud services beyond the blueprint without approval.
+- Never replace NestJS, Next.js, or MongoDB.
+- Never call OpenAI directly — use the AI service layer.
+- Never tightly couple business logic to Redis, Railway, Vercel, or OpenAI.
+- Code as if production will migrate to **AWS ECS** with minimal changes.
+
+## Deployment
+
+- API: `docker/Dockerfile` → Railway (`railway.toml`)
+- Frontends: Vercel auto-deploy from GitHub
+- CI: `.github/workflows/ci.yml` must pass before merge
+
+## Abstractions required
+
+```typescript
+// Cache — swap MemoryCacheProvider ↔ RedisCacheProvider
+interface CacheProvider {
+  get<T>(key: string): Promise<T | null>;
+  set(key: string, value: unknown, ttlSeconds?: number): Promise<void>;
+  del(key: string): Promise<void>;
+}
+
+// AI — never import openai in controllers
+// Use AiService / ModelRouter in apps/api/src/modules/ai/
+```
+
+## Future migration path
+
+`Railway → AWS ECS` · `Memory cache → Redis` · Keep Vercel, MongoDB, S3, Cloudflare.

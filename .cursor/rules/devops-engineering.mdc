@@ -1,0 +1,45 @@
+---
+description: DevOps engineering — CI/CD, Docker, Railway, deployment
+globs: .github/**,**/Dockerfile,**/docker-compose*,docker/**,railway.toml,turbo.json,pnpm-workspace.yaml
+alwaysApply: false
+---
+
+# DevOps Engineering
+
+Hosting: Vercel (frontends), Railway (API — MVP), AWS ECS (API — production). See `Docs/04-infrastructure.md` and `infrastructure-blueprint.mdc`.
+
+## Conventions
+
+- GitHub Actions: lint, typecheck, test, Docker build verify on every PR.
+- Use Turborepo pipeline for monorepo tasks (`pnpm turbo run ...`).
+- Environment-specific config via env vars — never commit secrets.
+- Docker images: multi-stage builds, non-root user, minimal base image (`docker/Dockerfile`).
+- Health checks at `/health` and graceful shutdown for API containers.
+
+## Deployment
+
+| App | Target (MVP) | Target (production) |
+|-----|--------------|---------------------|
+| `apps/marketing` | Vercel | Vercel |
+| `apps/dashboard` | Vercel | Vercel |
+| `apps/api` | Railway + Docker | AWS ECS Fargate + ALB |
+| `apps/widget` | CDN (Cloudflare) | CDN (Cloudflare) |
+
+## Railway
+
+- Config: `railway.toml` → `docker/Dockerfile`
+- Auto-deploy via Railway GitHub integration (recommended)
+- Optional GHA deploy: `ENABLE_RAILWAY_GHA_DEPLOY=true` + `RAILWAY_TOKEN` secret
+
+## Observability
+
+- Structured JSON logs from API.
+- CloudWatch metrics (production on AWS).
+- Define rollback procedure for every deployment change.
+
+## Do Not
+
+- Deploy without CI passing.
+- Store secrets in Docker images or git.
+- Skip staging validation for infra changes.
+- Tightly couple deployment code to Railway-specific APIs.

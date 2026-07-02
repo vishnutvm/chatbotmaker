@@ -1,0 +1,44 @@
+---
+description: Implementation planning — produce a plan before every feature
+alwaysApply: true
+---
+
+# Before Every Implementation
+
+Produce a plan **before writing code**. Use the `feature-implementation` skill for the full template.
+
+## Required Plan Flow
+
+```text
+Feature
+  ↓
+Requirements
+  ↓
+Architecture
+  ↓
+Files to change
+  ↓
+Database changes
+  ↓
+API changes
+  ↓
+Frontend changes
+  ↓
+Testing plan
+  ↓
+Implementation
+  ↓
+Review
+```
+
+## Plan Must Include
+
+1. Business requirement and acceptance criteria
+2. Affected modules and layer boundaries
+3. Security, performance, and cost considerations
+4. Explicit file list (create / modify)
+5. Migration or schema changes (if any)
+6. Test strategy (unit, integration, E2E)
+7. Documentation updates required
+
+Do not skip planning for "small" changes — small leaks become architectural debt.

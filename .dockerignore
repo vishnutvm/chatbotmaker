@@ -1,0 +1,40 @@
+# Dependencies and build outputs
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+.idea
+
+# Docs and tests (not needed in API image)
+Docs
+docs
+**/*.md
+**/*.spec.ts
+**/*.e2e-spec.ts
+**/test
+**/coverage
+
+# Frontend apps (API image only)
+apps/marketing
+apps/dashboard
+apps/widget
+packages/ui
+packages/api-client
+
+# CI and local tooling
+.github
+*.log

@@ -1,0 +1,91 @@
+---
+description: Review gates — mandatory checks before and after implementation
+alwaysApply: true
+---
+
+# Review Gates
+
+No feature proceeds to implementation until pre-coding gates pass. No feature completes until post-coding gates pass.
+
+## Gate 1 — Architecture review (before code)
+
+- Can this scale?
+- Can it be reused?
+- Does it duplicate existing code?
+- Can another module use this?
+- Should it be generic or configurable?
+- Does it respect layering? (see `architecture-rules.mdc`)
+
+Delegate to `solution-architect` or `tech-lead` for non-trivial changes.
+
+## Gate 2 — Cost review (before code)
+
+- How many MongoDB reads/writes?
+- Can Redis reduce reads?
+- Can this be cached?
+- How many OpenAI tokens? Can prompt size be reduced?
+- Can we stream? Can background jobs help?
+- Will this increase AWS/infra costs?
+
+See `cost-optimization.mdc`.
+
+## Gate 3 — Security review (before + after code)
+
+Every feature — no exceptions:
+
+- Authentication and authorization
+- RBAC and tenant isolation
+- Input validation and output sanitization
+- Rate limiting (where applicable)
+- File upload validation (where applicable)
+- Secrets handling and audit logging
+
+Delegate to `security-engineer` after implementation.
+
+## Gate 4 — Performance review (before + after code)
+
+For every API and data path, document before implementing:
+
+- Latency target
+- Memory and CPU expectations
+- Database queries and indexes
+- Caching strategy
+- Streaming vs buffering
+- Pagination on lists
+
+Delegate to `performance-reviewer` for APIs and hot paths.
+
+## Gate 5 — Database review (before schema changes)
+
+- Is the schema normalized enough for the access patterns?
+- Are indexes defined? Compound indexes needed?
+- What are the query patterns?
+- How will it scale?
+- Migration and rollback plan?
+
+Use `database-migration` skill.
+
+## Gate 6 — UI review (before frontend work)
+
+Every page/component must plan for:
+
+- Empty state
+- Loading state
+- Error state
+- Success state
+- Responsive layout
+- Accessibility and keyboard navigation
+
+Use `ui-feature` skill.
+
+## Gate 7 — API contract (before backend endpoint)
+
+Define contract before implementing. Use `api-contract-first` skill.
+
+## Post-implementation gates
+
+```text
+Self review → Unit tests → Integration tests → E2E tests
+→ Performance review → Security review → Refactor if needed
+→ Documentation → Code review → Git commit (when user requests)
+```

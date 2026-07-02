@@ -1,0 +1,44 @@
+---
+description: Backend engineering — NestJS modules, services, repositories, DTOs
+globs: apps/api/**,packages/api-client/**
+alwaysApply: false
+---
+
+# Backend Engineering (NestJS)
+
+Stack: NestJS modular monolith in `apps/api/`. See `Docs/07-repository-and-application-architecture.md`.
+
+## Module Structure
+
+```text
+apps/api/src/modules/<feature>/
+  <feature>.module.ts
+  <feature>.controller.ts   # thin — delegate only
+  <feature>.service.ts      # business logic
+  <feature>.repository.ts   # data access
+  dto/
+  entities/ or schemas/
+```
+
+## Conventions
+
+- Use **dependency injection** — inject services and repositories via constructor.
+- Controllers: validate DTOs, call service, map response — no business logic.
+- Services: orchestration, authorization checks, domain rules.
+- Repositories: MongoDB queries only — no business rules.
+- Use `packages/types` for shared DTOs/types consumed by frontends.
+- Global exception filters and structured logging for errors.
+- Health check at `/health` for load balancers.
+
+## API Design
+
+- RESTful resources with consistent naming (`/api/v1/...`).
+- Return appropriate HTTP status codes and error shapes.
+- Paginate list endpoints; document auth requirements.
+- Stream AI responses via SSE where applicable.
+
+## Do Not
+
+- Put business logic in controllers or repositories.
+- Call OpenAI or external AI APIs directly from controllers.
+- Bypass the auth module for protected routes.

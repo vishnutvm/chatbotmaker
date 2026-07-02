@@ -1,0 +1,45 @@
+---
+description: Security rules — auth, validation, injection prevention, and secrets handling
+alwaysApply: true
+---
+
+# Security Rules
+
+Apply security by default on every feature. Never defer security to a later pass.
+
+## Authentication & Authorization
+
+- Enforce authentication on protected routes and APIs.
+- Use authorization with **RBAC** — check roles and permissions on every sensitive action.
+- **Tenant isolation** — scope all data access by organization/tenant from JWT; never trust client-supplied tenant IDs alone.
+- Validate **JWT** signatures, expiry, issuer, and audience; never trust client claims without verification.
+- Run **permission checks** in services or guards — not only in the UI.
+- **Audit logging** for sensitive actions (auth, billing, admin, data export).
+
+## Input & API Validation
+
+- Validate all inputs at API boundaries (body, query, params, headers).
+- **Validate and sanitize outputs** where user-controlled data is returned.
+- Use schema validation (e.g. DTOs, Zod, class-validator) — reject unknown fields.
+- Sanitize and validate **file uploads**: type, size, extension, and content; store outside web root.
+- Apply **rate limiting** on auth, public, and expensive endpoints.
+
+## Injection & Client Attacks
+
+- Prevent **SQL/NoSQL injection**: parameterized queries, ORM bindings, no string-concatenated queries.
+- Prevent **XSS**: escape output, use framework-safe rendering, set Content-Security-Policy where applicable.
+- Prevent **CSRF**: use tokens or SameSite cookies on state-changing browser requests.
+
+## Secrets & Logging
+
+- Never commit secrets; use environment variables or a secrets manager.
+- Never log passwords, tokens, API keys, or PII.
+- Redact sensitive fields in error responses and logs.
+
+```typescript
+// ❌ BAD
+logger.info('Login', { email, password, token });
+
+// ✅ GOOD
+logger.info('Login attempt', { userId, success: true });
+```

@@ -1,0 +1,46 @@
+{
+  "workspace": "Genie Platform — Engineering Hub",
+  "hub": {
+    "page_id": "391d4859-9a99-8173-9d54-d95dca415f29",
+    "url": "https://app.notion.com/p/391d48599a9981739d54d95dca415f29"
+  },
+  "databases": {
+    "phases": {
+      "database_id": "c3aae86d04524ab6aa16a22fdf8e4628",
+      "data_source_id": "d4c6ac28-58d0-46d2-b024-5c0f8f8dbbc6",
+      "url": "https://app.notion.com/p/c3aae86d04524ab6aa16a22fdf8e4628",
+      "title_property": "Project name"
+    },
+    "tasks": {
+      "database_id": "c782d47d0df049649dca8bf522af3844",
+      "data_source_id": "5badeabf-070c-45bc-90c9-ce58758bab1d",
+      "url": "https://app.notion.com/p/c782d47d0df049649dca8bf522af3844",
+      "title_property": "Task name",
+      "status_property": "Status",
+      "status_values": {
+        "not_started": "Not started",
+        "in_progress": "In progress",
+        "done": "Done",
+        "archived": "Archived"
+      },
+      "phase_relation_property": "Phase",
+      "priority_property": "Priority",
+      "area_property": "Area",
+      "repo_path_property": "Repo Path"
+    }
+  },
+  "phase_urls": {
+    "1_foundation": "https://app.notion.com/p/391d48599a9981069208c6d704285815",
+    "2_authentication": "https://app.notion.com/p/391d48599a998170ac1de647b2538d61",
+    "3_organizations": "https://app.notion.com/p/391d48599a99819eb998fbcad0b7c23a",
+    "4_ai": "https://app.notion.com/p/391d48599a998143846ee4eaec7afba0",
+    "5_knowledge": "https://app.notion.com/p/391d48599a998111bbd1dbc4d7ccc0c0",
+    "6_assistants": "https://app.notion.com/p/391d48599a99819a9ec1f1ca235eb3d8",
+    "7_widget": "https://app.notion.com/p/391d48599a9981c79f44dad57d59975e",
+    "8_billing": "https://app.notion.com/p/391d48599a99811595a9d476a9ec9e44",
+    "9_analytics": "https://app.notion.com/p/391d48599a998175a945f531a6829b94",
+    "10_production": "https://app.notion.com/p/391d48599a9981678851f3aa4348d2d0"
+  },
+  "roadmap_doc": "Docs/05-mvp-roadmap.md",
+  "mcp_server": "plugin-notion-workspace-notion"
+}

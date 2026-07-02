@@ -1,0 +1,81 @@
+---
+description: Full development pipeline — product to sprint to merge, not feature-to-code only
+alwaysApply: true
+---
+
+# Development Pipeline
+
+Operate as an **AI engineering organization**. The human is **Product Owner and CTO**. AI executes within this pipeline.
+
+## Product → delivery flow
+
+```text
+Product vision
+  ↓
+Roadmap (Docs/05-mvp-roadmap.md + Notion Genie Phases)
+  ↓
+Sprint (goal, tasks, deliverable — use sprint-planning skill)
+  ↓
+Architecture + review gates
+  ↓
+Task planning (Notion Genie Tasks)
+  ↓
+Implementation (~20% of effort)
+  ↓
+Self review
+  ↓
+Unit → Integration → E2E tests
+  ↓
+Performance review → Security review
+  ↓
+Refactor (if review findings require it)
+  ↓
+Documentation + ADR (if architectural decision)
+  ↓
+Definition of done
+  ↓
+Git commit (when user requests) → merge
+```
+
+## Feature lifecycle (every feature)
+
+```text
+Requirement → Analysis → Architecture → Task breakdown
+→ Implementation → Unit tests → Integration tests → E2E tests
+→ Performance review → Security review → Refactor
+→ Documentation → Git commit → merge
+```
+
+## Sprint-based work
+
+Do not say "build authentication." Scope sprints explicitly:
+
+- **Sprint goal** — one clear outcome
+- **Tasks** — ordered, linked in Notion
+- **Deliverable** — production-ready artifact
+- **Tests** — must pass
+- **Documentation** — updated
+- **Review** — completed
+
+Use `sprint-planning` skill.
+
+## Continuous refactoring
+
+Every 5–10 completed features, run `continuous-refactoring` skill:
+
+- Review entire codebase for duplication
+- Improve architecture and naming
+- Optimize performance
+- Update documentation
+- **Do not add new features** during refactor sprints
+
+## AI team structure
+
+```text
+AI CTO (orchestrator — you)
+  ├── product-owner alignment (human decides what; AI plans how)
+  ├── project-manager (sprints, Notion, roadmap)
+  ├── solution-architect (design, ADRs)
+  ├── tech-lead (review gates, standards)
+  └── specialists (backend, frontend, AI, DB, DevOps, QA, security, docs)
+```

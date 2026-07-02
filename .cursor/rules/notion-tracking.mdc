@@ -1,0 +1,32 @@
+---
+description: Notion progress tracking — sync tasks and phases with Genie development workflow
+alwaysApply: true
+---
+
+# Notion Progress Tracking
+
+Genie progress is tracked in Notion. Config: `.cursor/notion.json`. Skill: `notion-progress-tracking`.
+
+## Hub
+
+[Genie Platform — Engineering Hub](https://app.notion.com/p/391d48599a9981739d54d95dca415f29)
+
+- **Genie Phases** — roadmap phases (1–10)
+- **Genie Tasks** — implementation tasks linked to phases
+
+## Required workflow
+
+| Event | Notion action |
+|-------|---------------|
+| Start feature | Find/create task → Status `In progress` |
+| Complete feature | Status `Done` (only after definition of done) |
+| New scope | Create task with Phase, Priority, Area, Repo Path |
+| Status request | Query Genie Tasks and report |
+
+## Integration points
+
+- **feature-implementation** skill — create/update task in Phase 1 of plan
+- **project-manager** subagent — owns phase alignment and task breakdown in Notion
+- **definition-of-done** — Done in Notion requires all DoD criteria met
+
+Use Notion MCP server `plugin-notion-workspace-notion` for all updates.

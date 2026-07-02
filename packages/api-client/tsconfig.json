@@ -1,0 +1,7 @@
+{
+  "extends": "@genie/config/typescript/base",
+  "compilerOptions": {
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}

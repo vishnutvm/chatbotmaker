@@ -1,0 +1,46 @@
+---
+description: Architecture rules — layering, module boundaries, and separation of concerns
+alwaysApply: true
+---
+
+# Architecture Rules
+
+Respect the existing architecture. Never break layering.
+
+## Layer Responsibilities
+
+| Layer | Responsibility |
+|-------|----------------|
+| **Frontend** | Presentation only — never contain business logic |
+| **Controllers** | Thin — validate input, delegate to services, return responses |
+| **Services** | Business logic and orchestration |
+| **Repositories** | Data access only — no business rules |
+
+## Module Boundaries
+
+Keep these concerns isolated in their own modules:
+
+- **AI logic** → AI modules only
+- **Authentication** → auth module only
+- **Billing** → billing module only
+- **Analytics** → analytics module only
+
+Every module must be independently maintainable. Do not couple modules across these boundaries.
+
+## Violations to Avoid
+
+```typescript
+// ❌ BAD — business logic in controller
+@Post('orders')
+create(@Body() dto: CreateOrderDto) {
+  const total = dto.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  if (total > dto.creditLimit) throw new BadRequestException();
+  return this.repo.save(dto);
+}
+
+// ✅ GOOD — thin controller, logic in service
+@Post('orders')
+create(@Body() dto: CreateOrderDto) {
+  return this.orderService.create(dto);
+}
+```

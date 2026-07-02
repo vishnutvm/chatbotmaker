@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme Toggle Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Theme Toggle Diagnostic Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Check Theme Provider</h2>
+        <button onclick="checkThemeProvider()">Run Test</button>
+        <div id="provider-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Check Current Theme</h2>
+        <button onclick="checkCurrentTheme()">Run Test</button>
+        <div id="theme-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Theme Toggle Button</h2>
+        <button onclick="testToggleButton()">Run Test</button>
+        <div id="toggle-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Manual Theme Switch</h2>
+        <button onclick="switchToDark()">Switch to Dark</button>
+        <button onclick="switchToLight()">Switch to Light</button>
+        <button onclick="switchToSystem()">Switch to System</button>
+        <div id="manual-result"></div>
+    </div>
+
+    <script>
+        function checkThemeProvider() {
+            const result = document.getElementById('provider-result');
+            const html = document.documentElement;
+            
+            let status = '<div class="status info">';
+            status += `<strong>HTML Classes:</strong> ${html.className || '(none)'}<br>`;
+            status += `<strong>Has dark class:</strong> ${html.classList.contains('dark') ? '✅ Yes' : '❌ No'}<br>`;
+            status += `<strong>Has light class:</strong> ${html.classList.contains('light') ? '✅ Yes' : '❌ No'}<br>`;
+            status += '</div>';
+            
+            result.innerHTML = status;
+        }
+
+        function checkCurrentTheme() {
+            const result = document.getElementById('theme-result');
+            const stored = localStorage.getItem('chatbot-theme');
+            const html = document.documentElement;
+            
+            let status = '<div class="status info">';
+            status += `<strong>localStorage theme:</strong> ${stored || '(not set - will use default: dark)'}<br>`;
+            status += `<strong>HTML class:</strong> ${html.className}<br>`;
+            status += `<strong>Computed background:</strong> ${getComputedStyle(document.body).backgroundColor}<br>`;
+            status += '</div>';
+            
+            result.innerHTML = status;
+        }
+
+        function testToggleButton() {
+            const result = document.getElementById('toggle-result');
+            const button = document.querySelector('button[aria-label*="Switch theme"]');
+            
+            if (!button) {
+                result.innerHTML = '<div class="status error">❌ Theme toggle button NOT found in the page!</div>';
+                return;
+            }
+            
+            const beforeTheme = document.documentElement.className;
+            const beforeText = button.textContent.trim();
+            
+            // Click the button
+            button.click();
+            
+            setTimeout(() => {
+                const afterTheme = document.documentElement.className;
+                const afterText = button.textContent.trim();
+                
+                let status = '<div class="status ' + (beforeTheme !== afterTheme ? 'success' : 'error') + '">';
+                status += `<strong>Before click:</strong> ${beforeTheme} - Button: "${beforeText}"<br>`;
+                status += `<strong>After click:</strong> ${afterTheme} - Button: "${afterText}"<br>`;
+                status += `<strong>Theme changed:</strong> ${beforeTheme !== afterTheme ? '✅ Yes' : '❌ No'}<br>`;
+                status += '</div>';
+                
+                result.innerHTML = status;
+            }, 500);
+        }
+
+        function switchToDark() {
+            localStorage.setItem('chatbot-theme', 'dark');
+            document.documentElement.classList.remove('light', 'dark');
+            document.documentElement.classList.add('dark');
+            updateManualResult('dark');
+        }
+
+        function switchToLight() {
+            localStorage.setItem('chatbot-theme', 'light');
+            document.documentElement.classList.remove('light', 'dark');
+            document.documentElement.classList.add('light');
+            updateManualResult('light');
+        }
+
+        function switchToSystem() {
+            localStorage.setItem('chatbot-theme', 'system');
+            const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.classList.remove('light', 'dark');
+            document.documentElement.classList.add(systemTheme);
+            updateManualResult(`system (${systemTheme})`);
+        }
+
+        function updateManualResult(theme) {
+            const result = document.getElementById('manual-result');
+            result.innerHTML = `<div class="status success">✅ Switched to ${theme} mode. Reload the page to see if it persists.</div>`;
+        }
+
+        // Auto-run first test on load
+        window.onload = () => {
+            checkThemeProvider();
+            checkCurrentTheme();
+        };
+    </script>
+</body>
+</html>

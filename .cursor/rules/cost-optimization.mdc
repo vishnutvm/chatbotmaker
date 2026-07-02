@@ -1,0 +1,25 @@
+---
+description: Cost optimization — minimize cloud, AI, and infrastructure spend
+alwaysApply: true
+---
+
+# Cost Optimization
+
+Always minimize operational cost. Never implement expensive operations when cheaper alternatives exist.
+
+## Minimize
+
+- **OpenAI tokens** — trim prompts, cache embeddings, limit context windows
+- **Redis memory** — TTLs, right-sized keys, avoid storing large blobs
+- **MongoDB reads/writes** — indexes, projection, pagination, avoid redundant queries
+- **S3 requests** — batch operations, lifecycle policies, CDN caching
+- **Cloudflare requests** — cache static assets, reduce origin round-trips
+- **Network traffic** — compress payloads, avoid chatty APIs
+- **CPU & RAM** — right-size containers, async where possible, stream don't buffer
+
+## Design Questions
+
+- Can this be cached?
+- Can this run asynchronously?
+- Can we batch this operation?
+- Is this the smallest model that meets quality requirements?

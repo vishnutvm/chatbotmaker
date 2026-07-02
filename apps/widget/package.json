@@ -1,0 +1,16 @@
+{
+  "name": "@genie/widget",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsup src/index.ts --format iife --global-name GenieWidget --minify",
+    "dev": "tsup src/index.ts --format iife --global-name GenieWidget --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"No lint configured for @genie/widget\""
+  },
+  "devDependencies": {
+    "@genie/config": "workspace:*",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.2"
+  }
+}

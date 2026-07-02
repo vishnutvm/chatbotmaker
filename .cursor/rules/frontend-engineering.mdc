@@ -1,0 +1,38 @@
+---
+description: Frontend engineering — Next.js presentation layer, no business logic
+globs: apps/dashboard/**,apps/marketing/**,apps/widget/**,dashboard/**
+alwaysApply: false
+---
+
+# Frontend Engineering (Next.js)
+
+Apps: `apps/marketing/` (SSR/SSG), `apps/dashboard/` (CSR + Server Components), `apps/widget/` (embed).
+
+## Layer Rules
+
+- **Presentation only** — no business logic in components.
+- Call backend via `packages/api-client` or typed fetch wrappers.
+- Validate forms client-side for UX; **server validates authoritatively**.
+- Use shared UI from `packages/ui` when available.
+
+## Conventions
+
+- Functional components with TypeScript.
+- Colocate component-specific hooks; extract reusable hooks to `hooks/`.
+- Use Tailwind for styling; follow existing design tokens.
+- Handle loading, error, and empty states explicitly.
+- Auth state via secure cookies/tokens — never store secrets in localStorage.
+
+## Marketing vs Dashboard
+
+| App | Rendering | Purpose |
+|-----|-----------|---------|
+| `apps/marketing` | SSR/SSG | SEO, landing, public pages |
+| `apps/dashboard` | CSR-heavy | Authenticated app shell |
+| `apps/widget` | Minimal bundle | Embeddable chat widget |
+
+## Do Not
+
+- Duplicate API business rules in the frontend.
+- Call MongoDB, Redis, or OpenAI from frontend code.
+- Skip accessibility (semantic HTML, labels, keyboard nav).

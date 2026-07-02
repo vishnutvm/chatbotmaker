@@ -1,0 +1,46 @@
+---
+description: Documentation standards — API docs, architecture notes, and migration records
+alwaysApply: true
+---
+
+# Documentation
+
+Every feature requires documentation updates proportional to its impact.
+
+## Knowledge base layout
+
+```text
+docs/                    # Living engineering knowledge base
+  architecture/
+  business/
+  api/
+  database/
+  features/
+  adr/                   # Architecture Decision Records
+  development/
+  testing/
+  security/
+Docs/                    # Product docs (vision, roadmap, specs) — canonical product source
+```
+
+Update the relevant section when behavior, APIs, schema, or architecture changes.
+
+## Required (when applicable)
+
+- **API docs** — contracts in `docs/api/` before implementation (`api-contract-first` skill)
+- **Architecture notes** — `docs/architecture/` or ADR in `docs/adr/`
+- **README updates** — setup, env vars, run commands
+- **Migration notes** — `docs/database/`
+- **ADR** — significant decisions (problem, options, choice, trade-offs)
+
+## ADR format (`docs/adr/NNNN-title.md`)
+
+1. Status (proposed | accepted | superseded)
+2. Context / problem
+3. Options considered
+4. Decision
+5. Consequences and trade-offs
+
+## Rules
+
+Document during implementation. If a future engineer cannot operate or extend the feature from docs + code, documentation is incomplete.
