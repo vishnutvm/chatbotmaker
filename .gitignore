@@ -35,6 +35,5 @@ coverage/
 # Misc
 *.tsbuildinfo
 
-# Nested git (legacy clones)
-dashboard/
-apps/marketing/.git/
+# Legacy orphan folder at repo root (not apps/dashboard)
+/dashboard/
