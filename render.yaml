@@ -1,5 +1,4 @@
-# Render Blueprint — used by the deploy mirror repo (other GitHub account).
-# Docs: https://render.com/docs/blueprint-spec
+# Fallback API host — https://github.com/vishnutvm/chatbotmaker-docs (Docs/deployment/api-hosting.md)
 
 services:
   - type: web

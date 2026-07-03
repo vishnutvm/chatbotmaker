@@ -4,7 +4,8 @@
 
 | | |
 |---|---|
-| **Live site** | [aichatbotmaker.vercel.app](https://aichatbotmaker.vercel.app) |
+| **Code** | [github.com/vishnutvm/chatbotmaker](https://github.com/vishnutvm/chatbotmaker) |
+| **Documentation** | [github.com/vishnutvm/chatbotmaker-docs](https://github.com/vishnutvm/chatbotmaker-docs) (private) |
 | **Codename** | Genie |
 
 ---
@@ -27,20 +28,11 @@ pnpm dev
 ## Monorepo structure
 
 ```text
-genie-platform/
-├── apps/
-│   ├── marketing/     # Landing page (SSR/SSG)
-│   ├── dashboard/     # Authenticated app shell
-│   ├── api/           # NestJS backend
-│   └── widget/        # Embeddable bundle
-├── packages/
-│   ├── types/         # Shared TypeScript types
-│   ├── ui/            # Shared UI components
-│   ├── api-client/    # Typed API client
-│   └── config/        # Shared TS configs
-├── Docs/              # Product documentation
-├── .cursor/           # AI engineering system
-└── AGENTS.md          # AI CTO orchestration
+chatbotmaker/
+├── apps/           # marketing, dashboard, api, widget
+├── packages/       # types, ui, api-client, config
+├── .cursor/        # AI engineering rules & skills (repo-local)
+└── AGENTS.md       # Pointer to docs repo + Cursor entry
 ```
 
 ---
@@ -57,31 +49,31 @@ genie-platform/
 
 ---
 
+## API (production)
+
+| Role | URL |
+|------|-----|
+| **Railway (primary)** | https://genie-api-production-4bb3.up.railway.app |
+| **Render (fallback)** | https://genie-api-rsfy.onrender.com |
+
+`NEXT_PUBLIC_API_URL` → Railway URL. Full hosting notes in **chatbotmaker-docs**.
+
+---
+
 ## Documentation
 
-- [Product docs](./Docs/README.md)
-- [MVP Roadmap](./Docs/05-mvp-roadmap.md)
-- [Architecture ADR](./Docs/07-repository-and-application-architecture.md)
-- [Sprint 1 — Foundation](./Docs/features/sprint-1-foundation.md)
-- [AI engineering system](./Docs/development/cursor-ai-system.md)
+All product specs, roadmaps, ADRs, deployment notes, and access registry live in the **private docs repo**:
+
+**https://github.com/vishnutvm/chatbotmaker-docs**
 
 ---
 
-## Deploy on Vercel
+## Deploy
 
-This is a **pnpm monorepo**. Create **separate Vercel projects** per app:
+| App | Host | Root directory |
+|-----|------|----------------|
+| Marketing | Vercel | `apps/marketing` |
+| Dashboard | Vercel | `apps/dashboard` |
+| API | Railway (primary) / Render (fallback) | `docker/Dockerfile` |
 
-| Vercel project | Root directory | Domain (suggested) |
-|----------------|----------------|--------------------|
-| Marketing | `apps/marketing` | chatbotmaker.com |
-| Dashboard | `apps/dashboard` | app.chatbotmaker.com |
-
-1. Import **https://github.com/vishnutvm/chatbotmaker** on [Vercel](https://vercel.com/new)
-2. Set **Root Directory** to `apps/marketing` (or `apps/dashboard`)
-3. Framework: **Next.js** (auto-detected)
-4. Install command: `cd ../.. && pnpm install` (or use defaults from `vercel.json`)
-5. Deploy
-
-The API (`apps/api`) deploys to **AWS ECS** later — not Vercel.
-
----
+Import this repo on Vercel; connect GitHub on Railway. See **chatbotmaker-docs** for URLs, SSH, and mirror setup.

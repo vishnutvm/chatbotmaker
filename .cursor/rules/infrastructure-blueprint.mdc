@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Infrastructure Blueprint (Active)
 
-Canonical source: `Docs/04-infrastructure.md`. **Do not deviate without explicit approval.**
+Canonical source: [chatbotmaker-docs — Docs/04-infrastructure.md](https://github.com/vishnutvm/chatbotmaker-docs/blob/master/Docs/04-infrastructure.md). **Do not deviate without explicit approval.**
 
 ## MVP stack
 

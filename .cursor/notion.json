@@ -41,6 +41,6 @@
     "9_analytics": "https://app.notion.com/p/391d48599a998175a945f531a6829b94",
     "10_production": "https://app.notion.com/p/391d48599a9981678851f3aa4348d2d0"
   },
-  "roadmap_doc": "Docs/05-mvp-roadmap.md",
+  "roadmap_doc": "https://github.com/vishnutvm/chatbotmaker-docs/blob/master/Docs/05-mvp-roadmap.md",
   "mcp_server": "plugin-notion-workspace-notion"
 }

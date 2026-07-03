@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Phase Planning
 
-Never jump randomly. Always build according to the roadmap in `Docs/05-mvp-roadmap.md`.
+Never jump randomly. Always build according to the roadmap in [chatbotmaker-docs — Docs/05-mvp-roadmap.md](https://github.com/vishnutvm/chatbotmaker-docs/blob/master/Docs/05-mvp-roadmap.md).
 
 ## Build Order
 

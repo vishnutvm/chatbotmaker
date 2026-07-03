@@ -20,7 +20,7 @@ docs/                    # Living engineering knowledge base
   development/
   testing/
   security/
-Docs/                    # Product docs (vision, roadmap, specs) — canonical product source
+Docs/                    # Product docs — in chatbotmaker-docs repo (private)
 ```
 
 Update the relevant section when behavior, APIs, schema, or architecture changes.

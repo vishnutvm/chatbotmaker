@@ -1,5 +1,4 @@
-# Railway service configuration for apps/api
-# Docs: Docs/04-infrastructure.md
+# Primary API host — https://github.com/vishnutvm/chatbotmaker-docs (Docs/deployment/api-hosting.md)
 
 [build]
 builder = "DOCKERFILE"
