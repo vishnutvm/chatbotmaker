@@ -1,0 +1,50 @@
+# Mirrors master to a second GitHub repo (other account) for Render/Railway deploy.
+# Enable: add secret DEPLOY_MIRROR_TOKEN + variable DEPLOY_MIRROR_REPO (e.g. otheruser/chatbotmaker-deploy)
+
+name: Mirror to deploy repo
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/api/**'
+      - 'packages/types/**'
+      - 'packages/config/**'
+      - 'docker/**'
+      - 'render.yaml'
+      - 'railway.toml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/mirror-deploy-repo.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    if: vars.DEPLOY_MIRROR_REPO != ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to deploy mirror
+        env:
+          MIRROR_TOKEN: ${{ secrets.DEPLOY_MIRROR_TOKEN }}
+          MIRROR_REPO: ${{ vars.DEPLOY_MIRROR_REPO }}
+        run: |
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "DEPLOY_MIRROR_TOKEN secret is not set. Skipping mirror."
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          BRANCH="${GITHUB_REF_NAME}"
+          git remote add mirror "https://x-access-token:${MIRROR_TOKEN}@github.com/${MIRROR_REPO}.git"
+          git push mirror "HEAD:refs/heads/${BRANCH}" --force

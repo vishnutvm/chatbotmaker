@@ -1,0 +1,17 @@
+# Render Blueprint — used by the deploy mirror repo (other GitHub account).
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: genie-api
+    runtime: docker
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT automatically; apps/api reads process.env.PORT
+      # - key: MONGODB_URI
+      #   sync: false
