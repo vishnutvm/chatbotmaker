@@ -1,5 +1,7 @@
-# Mirrors master to a second GitHub repo (other account) for Render/Railway deploy.
-# Enable: add secret DEPLOY_MIRROR_TOKEN + variable DEPLOY_MIRROR_REPO (e.g. otheruser/chatbotmaker-deploy)
+# Mirrors master/main to a second GitHub repo (other account) for Render deploy.
+# Secrets: DEPLOY_MIRROR_TOKEN (PAT from deploy account, Contents read/write on mirror repo)
+# Variables: DEPLOY_MIRROR_REPO (e.g. vishnuMChanthavila/chatbotmaker-deploy)
+# Optional variable: DEPLOY_MIRROR_BRANCH (default: main)
 
 name: Mirror to deploy repo
 
@@ -36,6 +38,7 @@ jobs:
         env:
           MIRROR_TOKEN: ${{ secrets.DEPLOY_MIRROR_TOKEN }}
           MIRROR_REPO: ${{ vars.DEPLOY_MIRROR_REPO }}
+          MIRROR_BRANCH: ${{ vars.DEPLOY_MIRROR_BRANCH || 'main' }}
         run: |
           if [ -z "$MIRROR_TOKEN" ]; then
             echo "DEPLOY_MIRROR_TOKEN secret is not set. Skipping mirror."
@@ -45,6 +48,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          BRANCH="${GITHUB_REF_NAME}"
           git remote add mirror "https://x-access-token:${MIRROR_TOKEN}@github.com/${MIRROR_REPO}.git"
-          git push mirror "HEAD:refs/heads/${BRANCH}" --force
+          git push mirror "HEAD:refs/heads/${MIRROR_BRANCH}" --force
+          echo "Mirrored ${GITHUB_REF_NAME} -> ${MIRROR_REPO}@${MIRROR_BRANCH}"
