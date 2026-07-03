@@ -51,12 +51,14 @@ chatbotmaker/
 
 ## API (production)
 
-| Role | URL |
-|------|-----|
-| **Railway (primary)** | https://genie-api-production-4bb3.up.railway.app |
-| **Render (fallback)** | https://genie-api-rsfy.onrender.com |
+| App | URL |
+|-----|-----|
+| **Marketing** | https://chatbotmaker-marketing.vercel.app |
+| **Dashboard** | https://chatbotmaker-dashboard-seven.vercel.app |
+| **API (Railway)** | https://genie-api-production-4bb3.up.railway.app |
+| **API (Render fallback)** | https://genie-api-rsfy.onrender.com |
 
-`NEXT_PUBLIC_API_URL` → Railway URL. Full hosting notes in **chatbotmaker-docs**.
+`NEXT_PUBLIC_API_URL` on dashboard → Railway URL. Full registry in **chatbotmaker-docs** → `ACCESS.md`.
 
 ---
 
