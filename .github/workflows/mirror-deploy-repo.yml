@@ -34,16 +34,33 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify mirror token access
+        env:
+          MIRROR_TOKEN: ${{ secrets.DEPLOY_MIRROR_TOKEN }}
+          MIRROR_REPO: ${{ vars.DEPLOY_MIRROR_REPO }}
+        run: |
+          MIRROR_TOKEN="$(printf '%s' "$MIRROR_TOKEN" | tr -d '\r\n')"
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "DEPLOY_MIRROR_TOKEN secret is not set."
+            exit 1
+          fi
+          STATUS="$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${MIRROR_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${MIRROR_REPO}")"
+          echo "GitHub API repo access status: ${STATUS}"
+          if [ "$STATUS" != "200" ]; then
+            echo "Token cannot access ${MIRROR_REPO}. Regenerate PAT on vishnuMChanthavila with Contents read/write for that repo only."
+            exit 1
+          fi
+
       - name: Push to deploy mirror
         env:
           MIRROR_TOKEN: ${{ secrets.DEPLOY_MIRROR_TOKEN }}
           MIRROR_REPO: ${{ vars.DEPLOY_MIRROR_REPO }}
           MIRROR_BRANCH: ${{ vars.DEPLOY_MIRROR_BRANCH || 'main' }}
         run: |
-          if [ -z "$MIRROR_TOKEN" ]; then
-            echo "DEPLOY_MIRROR_TOKEN secret is not set. Skipping mirror."
-            exit 1
-          fi
+          MIRROR_TOKEN="$(printf '%s' "$MIRROR_TOKEN" | tr -d '\r\n')"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
