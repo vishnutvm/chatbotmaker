@@ -42,6 +42,11 @@ jobs:
   docker-api:
     runs-on: ubuntu-latest
     needs: build
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
     steps:
       - uses: actions/checkout@v4
 
@@ -50,8 +55,13 @@ jobs:
 
       - name: Verify container health
         run: |
-          docker run -d --name genie-api-ci -p 4000:4000 -e PORT=4000 genie-api:ci
-          for i in $(seq 1 30); do
+          docker run -d --name genie-api-ci --network host \
+            -e PORT=4000 \
+            -e MONGODB_URI=mongodb://127.0.0.1:27017/genie_ci \
+            -e JWT_SECRET=ci-test-jwt-secret-minimum-32-characters \
+            -e JWT_REFRESH_SECRET=ci-test-refresh-secret-min-32-chars \
+            genie-api:ci
+          for i in $(seq 1 45); do
             if curl -sf http://localhost:4000/health > /dev/null; then
               curl -sf http://localhost:4000/health
               docker rm -f genie-api-ci
@@ -62,4 +72,4 @@ jobs:
           docker logs genie-api-ci
           docker rm -f genie-api-ci
           exit 1
-
+
