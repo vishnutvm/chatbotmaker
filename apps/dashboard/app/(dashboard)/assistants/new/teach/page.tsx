@@ -15,7 +15,6 @@ import {
   Textarea,
 } from '@genie/ui';
 import {
-  MOCK_CRAWL_PAGES,
   simulateKnowledgeImport,
   simulateWebsiteScan,
 } from '@/lib/mocks/knowledge.mock';

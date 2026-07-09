@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import {
   ArrowRight,
-  BarChart3,
   BookOpen,
   MessageSquare,
   Palette,

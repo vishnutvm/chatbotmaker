@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { createAuthClient } from '@genie/api-client';
 import type { MeResponse } from '@genie/types';
 import { getAccessToken, getApiBaseUrl, supabase } from '../supabase';
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [organizations, setOrganizations] = useState<MeResponse['organizations']>([]);
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
 
-  async function loadUser() {
+  const loadUser = useCallback(async () => {
     const token = await getAccessToken();
     if (!token) {
       setUser(null);
@@ -37,20 +37,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await client.me(token);
       setUser(me.user);
       setOrganizations(me.organizations);
-      if (!activeOrgId && me.organizations[0]) {
-        setActiveOrgId(me.organizations[0].id);
-      }
+      setActiveOrgId((current) => current ?? me.organizations[0]?.id ?? null);
     } catch {
       setUser(null);
       setOrganizations([]);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void loadUser();
-  }, []);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void loadUser();
+    });
+
+    return () => subscription.unsubscribe();
+  }, [loadUser]);
 
   const activeOrg = organizations.find((o) => o.id === activeOrgId) ?? organizations[0] ?? null;
 

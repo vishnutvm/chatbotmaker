@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, MetricCard, PageHeader } from '@genie/ui';
+import { Button, Card, PageHeader } from '@genie/ui';
 
 const USAGE = [
   { label: 'Conversations', used: 142, limit: 1000 },

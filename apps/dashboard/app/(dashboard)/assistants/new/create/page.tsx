@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, Input, PageHeader, cn } from '@genie/ui';
 import { PURPOSE_OPTIONS } from '@/lib/mocks/assistants.mock';

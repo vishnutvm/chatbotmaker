@@ -1,6 +1,5 @@
 'use client';
 
-import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Card, EmptyState, PageHeader } from '@genie/ui';
 
@@ -12,7 +11,6 @@ const ACTION_TEMPLATES = [
 ];
 
 export default function ActionsPage() {
-  const params = useParams();
   const [showCreate, setShowCreate] = useState(false);
 
   return (
