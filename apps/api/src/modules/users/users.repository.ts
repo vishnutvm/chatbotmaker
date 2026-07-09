@@ -1,21 +1,38 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { User, UserDocument } from './schemas/user.schema';
+import type { User } from '@prisma/client';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
+
+export interface CreateUserInput {
+  supabaseUserId: string;
+  email: string;
+  name: string;
+  emailVerified?: boolean;
+}
 
 @Injectable()
 export class UsersRepository {
-  constructor(@InjectModel(User.name) private readonly userModel: Model<UserDocument>) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findByEmail(email: string): Promise<UserDocument | null> {
-    return this.userModel.findOne({ email: email.toLowerCase() }).exec();
+  findByEmail(email: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   }
 
-  findById(id: string): Promise<UserDocument | null> {
-    return this.userModel.findById(id).exec();
+  findById(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { id } });
   }
 
-  create(data: Pick<User, 'email' | 'passwordHash' | 'name'>): Promise<UserDocument> {
-    return this.userModel.create(data);
+  findBySupabaseUserId(supabaseUserId: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { supabaseUserId } });
+  }
+
+  create(data: CreateUserInput): Promise<User> {
+    return this.prisma.user.create({
+      data: {
+        supabaseUserId: data.supabaseUserId,
+        email: data.email.toLowerCase(),
+        name: data.name.trim(),
+        emailVerified: data.emailVerified ?? false,
+      },
+    });
   }
 }

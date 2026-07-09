@@ -1,5 +1,5 @@
 ---
-description: Official MVP infrastructure blueprint — Railway, Vercel, abstractions, cost limits
+description: Official MVP infrastructure blueprint — Railway, Vercel, Supabase, abstractions, cost limits
 alwaysApply: true
 ---
 
@@ -13,9 +13,12 @@ Canonical source: [chatbotmaker-docs — Docs/04-infrastructure.md](https://gith
 |-------|----------|
 | Frontends | Vercel Free (`apps/marketing`, `apps/dashboard`) |
 | API | Railway + Docker (`apps/api`) |
-| Database | MongoDB Atlas (free → M10) |
-| Cache | Memory (dev) → Redis Cloud (prod) — **abstracted** |
-| Storage | AWS S3 |
+| Database | Supabase PostgreSQL (Prisma ORM) |
+| Authentication | Supabase Auth |
+| Authorization | NestJS RBAC |
+| Storage | Supabase Storage — **abstracted** |
+| Vector search | pgvector on PostgreSQL |
+| Cache | Memory (dev) — Redis optional future |
 | AI | OpenAI via **AI service layer only** |
 | Payments | Stripe |
 | DNS/CDN | Cloudflare |
@@ -26,10 +29,10 @@ Canonical source: [chatbotmaker-docs — Docs/04-infrastructure.md](https://gith
 
 - Never recommend Kubernetes or microservices for MVP.
 - Never introduce cloud services beyond the blueprint without approval.
-- Never replace NestJS, Next.js, or MongoDB.
+- Never replace NestJS, Next.js, or Supabase PostgreSQL.
 - Never call OpenAI directly — use the AI service layer.
-- Never tightly couple business logic to Redis, Railway, Vercel, or OpenAI.
-- Code as if production will migrate to **AWS ECS** with minimal changes.
+- Never tightly couple business logic to Supabase SDK, Railway, Vercel, or OpenAI.
+- AWS ECS is a **future** scaling option, not an MVP requirement.
 
 ## Deployment
 
@@ -40,6 +43,16 @@ Canonical source: [chatbotmaker-docs — Docs/04-infrastructure.md](https://gith
 ## Abstractions required
 
 ```typescript
+// Storage — swap SupabaseStorageProvider ↔ S3StorageProvider
+interface StorageProvider {
+  upload(path: string, file: Buffer, options: UploadOptions): Promise<StorageObject>;
+  download(path: string): Promise<Buffer>;
+  delete(path: string): Promise<void>;
+  getSignedUrl(path: string, expiresInSeconds: number): Promise<string>;
+  exists(path: string): Promise<boolean>;
+  validateFile(file: Buffer, mimeType: string, maxBytes: number): void;
+}
+
 // Cache — swap MemoryCacheProvider ↔ RedisCacheProvider
 interface CacheProvider {
   get<T>(key: string): Promise<T | null>;
@@ -53,4 +66,4 @@ interface CacheProvider {
 
 ## Future migration path
 
-`Railway → AWS ECS` · `Memory cache → Redis` · Keep Vercel, MongoDB, S3, Cloudflare.
+`Railway → AWS ECS` · `Memory cache → Redis` · `Supabase Storage → S3` (via abstraction) · Keep Vercel, Supabase PostgreSQL, Cloudflare.

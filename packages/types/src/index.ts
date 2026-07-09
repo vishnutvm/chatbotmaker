@@ -21,19 +21,17 @@ export interface AuthOrganization {
   role: OrganizationRole;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-}
-
-export interface AuthResponse {
+export interface OnboardResponse {
   user: AuthUser;
   organization: AuthOrganization;
-  tokens: AuthTokens;
 }
 
 export interface MeResponse {
   user: AuthUser;
   organizations: AuthOrganization[];
 }
+
+export * from './assistant';
+export * from './knowledge';
+export * from './conversation';
+export * from './analytics';

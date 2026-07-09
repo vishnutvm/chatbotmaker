@@ -13,11 +13,29 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: genie_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
+      SUPABASE_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
+      SUPABASE_URL: http://127.0.0.1:54321
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        # Version from package.json "packageManager" — do not set version here
 
       - uses: actions/setup-node@v4
         with:
@@ -26,6 +44,12 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @genie/api exec prisma generate
+
+      - name: Run database migrations
+        run: pnpm --filter @genie/api exec prisma migrate deploy
 
       - name: Lint
         run: pnpm lint
@@ -43,23 +67,49 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     services:
-      mongo:
-        image: mongo:7
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: genie_ci
         ports:
-          - 27017:27017
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
       - name: Build API Docker image
         run: docker build -f docker/Dockerfile -t genie-api:ci .
 
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install for migrations
+        run: pnpm install --frozen-lockfile
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
+        run: pnpm --filter @genie/api exec prisma migrate deploy
+
       - name: Verify container health
         run: |
           docker run -d --name genie-api-ci --network host \
             -e PORT=4000 \
-            -e MONGODB_URI=mongodb://127.0.0.1:27017/genie_ci \
-            -e JWT_SECRET=ci-test-jwt-secret-minimum-32-characters \
-            -e JWT_REFRESH_SECRET=ci-test-refresh-secret-min-32-chars \
+            -e DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/genie_ci \
+            -e DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:5432/genie_ci \
+            -e SUPABASE_URL=http://127.0.0.1:54321 \
+            -e SUPABASE_JWT_SECRET=ci-test-jwt-secret-minimum-32-characters \
             genie-api:ci
           for i in $(seq 1 45); do
             if curl -sf http://localhost:4000/health > /dev/null; then
@@ -73,3 +123,55 @@ jobs:
           docker rm -f genie-api-ci
           exit 1
 
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: genie_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
+      SUPABASE_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
+      SUPABASE_URL: http://127.0.0.1:54321
+      E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @genie/api exec prisma generate
+
+      - name: Run database migrations
+        run: pnpm --filter @genie/api exec prisma migrate deploy
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @genie/e2e exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: pnpm --filter @genie/e2e test

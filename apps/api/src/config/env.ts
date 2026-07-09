@@ -6,15 +6,23 @@ export function getRequiredEnv(key: string): string {
   return value;
 }
 
-export function getMongoUri(): string {
-  return process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/genie_dev';
+export function getDatabaseUrl(): string {
+  return process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:5432/genie_dev';
 }
 
-export function getJwtSecrets(): { access: string; refresh: string } {
-  const access = process.env.JWT_SECRET ?? 'dev-only-jwt-secret-change-in-production-32chars';
-  const refresh =
-    process.env.JWT_REFRESH_SECRET ?? 'dev-only-refresh-secret-change-in-production-32c';
-  return { access, refresh };
+export function getDirectDatabaseUrl(): string {
+  return process.env.DIRECT_URL ?? getDatabaseUrl();
+}
+
+export function getSupabaseUrl(): string {
+  return process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
+}
+
+export function getSupabaseJwtSecret(): string {
+  return (
+    process.env.SUPABASE_JWT_SECRET ??
+    'super-secret-jwt-token-with-at-least-32-characters-long'
+  );
 }
 
 export function getCorsOrigins(): string[] {

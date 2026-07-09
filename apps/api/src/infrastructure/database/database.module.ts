@@ -1,12 +1,9 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { getMongoUri } from '../../config/env';
+import { Global, Module } from '@nestjs/common';
+import { PrismaService } from './prisma.service';
 
+@Global()
 @Module({
-  imports: [
-    MongooseModule.forRoot(getMongoUri(), {
-      autoIndex: process.env.NODE_ENV !== 'production',
-    }),
-  ],
+  providers: [PrismaService],
+  exports: [PrismaService],
 })
 export class DatabaseModule {}

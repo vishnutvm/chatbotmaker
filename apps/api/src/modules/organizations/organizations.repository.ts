@@ -1,56 +1,62 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import {
-  Organization,
-  OrganizationDocument,
-  OrganizationMember,
-  OrganizationMemberDocument,
-} from './schemas/organization.schema';
+import type { Organization, OrganizationMember, OrganizationRole } from '@prisma/client';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 export interface CreateOrganizationInput {
   name: string;
   slug: string;
-  ownerId: Types.ObjectId;
+  ownerId: string;
 }
 
 @Injectable()
 export class OrganizationsRepository {
-  constructor(
-    @InjectModel(Organization.name)
-    private readonly organizationModel: Model<OrganizationDocument>,
-    @InjectModel(OrganizationMember.name)
-    private readonly memberModel: Model<OrganizationMemberDocument>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createWithOwner(
     input: CreateOrganizationInput,
-  ): Promise<{ organization: OrganizationDocument; membership: OrganizationMemberDocument }> {
-    const organization = await this.organizationModel.create({
-      name: input.name,
-      slug: input.slug,
-      ownerId: input.ownerId,
-      plan: 'free',
-    });
-
-    try {
-      const membership = await this.memberModel.create({
-        userId: input.ownerId,
-        organizationId: organization._id,
-        role: 'owner',
+  ): Promise<{ organization: Organization; membership: OrganizationMember }> {
+    return this.prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          name: input.name,
+          slug: input.slug,
+          ownerId: input.ownerId,
+          plan: 'free',
+        },
       });
+
+      const membership = await tx.organizationMember.create({
+        data: {
+          userId: input.ownerId,
+          organizationId: organization.id,
+          role: 'owner',
+        },
+      });
+
       return { organization, membership };
-    } catch (error) {
-      await this.organizationModel.deleteOne({ _id: organization._id });
-      throw error;
-    }
+    });
   }
 
-  findMembershipsForUser(userId: string): Promise<OrganizationMemberDocument[]> {
-    return this.memberModel.find({ userId: new Types.ObjectId(userId) }).exec();
+  findMembershipsForUser(userId: string): Promise<OrganizationMember[]> {
+    return this.prisma.organizationMember.findMany({ where: { userId } });
   }
 
-  findOrganizationById(id: string): Promise<OrganizationDocument | null> {
-    return this.organizationModel.findById(id).exec();
+  findOrganizationById(id: string): Promise<Organization | null> {
+    return this.prisma.organization.findUnique({ where: { id } });
+  }
+
+  findMembership(
+    userId: string,
+    organizationId: string,
+  ): Promise<OrganizationMember | null> {
+    return this.prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: { userId, organizationId },
+      },
+    });
+  }
+
+  toOrganizationRole(role: OrganizationRole): OrganizationRole {
+    return role;
   }
 }

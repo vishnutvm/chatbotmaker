@@ -28,7 +28,7 @@ Errors: 400, 401, 403, 404, 429
 
 ```typescript
 @Post()
-@UseGuards(JwtAuthGuard)
+@UseGuards(SupabaseJwtGuard)
 create(@Body() dto: CreateDto, @CurrentUser() user: User) {
   return this.service.create(dto, user);
 }

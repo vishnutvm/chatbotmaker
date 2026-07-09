@@ -64,9 +64,26 @@ chatbotmaker/
 
 ## Documentation
 
-All product specs, roadmaps, ADRs, deployment notes, and access registry live in the **private docs repo**:
+Engineering docs live in `docs/` in this repo. Product specs, roadmaps, and access registry:
 
 **https://github.com/vishnutvm/chatbotmaker-docs**
+
+Key local docs:
+- `docs/architecture/` — technical and infrastructure architecture
+- `docs/database/` — PostgreSQL schema design
+- `docs/adr/0001-adopt-supabase-data-platform.md` — infrastructure decision
+- `docs/development/SUPABASE_MIGRATION_PLAN.md` — migration plan
+
+## Stack (MVP)
+
+| Layer | Technology |
+|-------|------------|
+| Database | Supabase PostgreSQL + Prisma |
+| Auth | Supabase Auth |
+| Storage | Supabase Storage |
+| Vectors | pgvector |
+| API | NestJS on Railway |
+| Frontends | Next.js on Vercel |
 
 ---
 

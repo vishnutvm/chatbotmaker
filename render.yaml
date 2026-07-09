@@ -12,5 +12,11 @@ services:
       - key: NODE_ENV
         value: production
       # Render injects PORT automatically; apps/api reads process.env.PORT
-      # - key: MONGODB_URI
+      # - key: DATABASE_URL
+      #   sync: false
+      # - key: DIRECT_URL
+      #   sync: false
+      # - key: SUPABASE_URL
+      #   sync: false
+      # - key: SUPABASE_JWT_SECRET
       #   sync: false

@@ -1,44 +1,41 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import type { AccessTokenPayload } from '../../common/types/jwt-payload';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { CurrentUser, OptionalCurrentUser } from '../../common/decorators/current-user.decorator';
+import { SupabaseIdentityParam } from '../../common/decorators/supabase-identity.decorator';
+import type { AuthenticatedUser, SupabaseIdentity } from '../../common/types/jwt-payload';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshTokenDto, SignupDto } from './dto/auth.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OnboardDto } from './dto/auth.dto';
+import { SupabaseIdentityGuard } from './guards/supabase-identity.guard';
+import { SupabaseJwtGuard } from './guards/supabase-jwt.guard';
+import { OptionalSupabaseJwtGuard } from './guards/optional-supabase-jwt.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('signup')
-  signup(@Body() dto: SignupDto) {
-    return this.authService.signup(dto);
-  }
-
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
-  }
-
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refresh(dto);
-  }
-
-  @Post('logout')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard)
-  async logout(
-    @CurrentUser() user: AccessTokenPayload,
-    @Body() dto: RefreshTokenDto,
-  ): Promise<void> {
-    await this.authService.logout(user.sub, dto.refreshToken);
+  @Post('onboard')
+  @UseGuards(SupabaseIdentityGuard)
+  onboard(@SupabaseIdentityParam() identity: SupabaseIdentity, @Body() dto: OnboardDto) {
+    return this.authService.onboard(identity, dto);
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
-  me(@CurrentUser() user: AccessTokenPayload) {
-    return this.authService.getMe(user.sub);
+  @UseGuards(SupabaseJwtGuard)
+  me(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.getMe(user.userId);
+  }
+
+  /** Validates token and returns whether the user has completed onboarding */
+  @Get('session')
+  @UseGuards(OptionalSupabaseJwtGuard)
+  async session(@OptionalCurrentUser() user: AuthenticatedUser | null) {
+    if (!user) {
+      return { onboarded: false };
+    }
+    try {
+      const me = await this.authService.getMe(user.userId);
+      return { onboarded: true, ...me };
+    } catch {
+      return { onboarded: false };
+    }
   }
 }

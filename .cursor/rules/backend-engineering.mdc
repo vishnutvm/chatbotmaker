@@ -25,7 +25,7 @@ apps/api/src/modules/<feature>/
 - Use **dependency injection** — inject services and repositories via constructor.
 - Controllers: validate DTOs, call service, map response — no business logic.
 - Services: orchestration, authorization checks, domain rules.
-- Repositories: MongoDB queries only — no business rules.
+- Repositories: PostgreSQL queries via Prisma only — no business rules.
 - Use `packages/types` for shared DTOs/types consumed by frontends.
 - Global exception filters and structured logging for errors.
 - Health check at `/health` for load balancers.
