@@ -33,6 +33,7 @@ COPY apps/api/prisma ./apps/api/prisma
 COPY packages/types/package.json ./packages/types/
 COPY packages/config/package.json ./packages/config/
 RUN pnpm install --frozen-lockfile --prod --filter @genie/api... --ignore-scripts
+RUN cd apps/api && npx --yes prisma generate
 
 FROM node:22-alpine AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
@@ -41,7 +42,6 @@ ENV NODE_ENV=production
 
 COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=prod-deps --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=build --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build --chown=nestjs:nodejs /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=nestjs:nodejs /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build --chown=nestjs:nodejs /app/apps/api/prisma ./apps/api/prisma
