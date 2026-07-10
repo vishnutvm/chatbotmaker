@@ -60,6 +60,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: API integration tests
+        run: pnpm --filter @genie/api test:integration
+
       - name: Build
         run: pnpm build
 
