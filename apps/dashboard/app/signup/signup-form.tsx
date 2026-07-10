@@ -2,9 +2,11 @@
 
 import { createAuthClient } from '@genie/api-client';
 import { Button, Input } from '@genie/ui';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
+import { AuthDivider, AuthLink, AuthShell } from '@/components/auth/auth-shell';
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
+import { mapAuthError } from '@/lib/auth-flow';
 import { getApiBaseUrl } from '@/lib/auth-session';
 import { getSession, supabase } from '@/lib/supabase';
 
@@ -18,6 +20,7 @@ export function SignupForm() {
   const [password, setPassword] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -25,7 +28,16 @@ export function SignupForm() {
     void getSession().then((session) => {
       if (!session) {
         router.replace('/login');
+        return;
       }
+
+      const metadata = session.user.user_metadata as {
+        name?: string;
+        full_name?: string;
+      };
+
+      setName((current) => current || metadata.name || metadata.full_name || '');
+      setEmail(session.user.email ?? '');
     });
   }, [onboardOnly, router]);
 
@@ -43,6 +55,7 @@ export function SignupForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       if (onboardOnly) {
         const session = await getSession();
@@ -56,90 +69,115 @@ export function SignupForm() {
         password,
         options: { data: { name } },
       });
-      if (signUpError || !data.session) {
-        throw signUpError ?? new Error('Sign up failed');
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      if (data.user && !data.session) {
+        setSuccess('Account created. Check your email to confirm, then sign in.');
+        return;
+      }
+
+      if (!data.session) {
+        throw new Error('Sign up failed');
       }
 
       await completeOnboard(data.session.access_token, email);
-    } catch {
-      setError('Could not create account. Email may already be in use.');
+    } catch (err) {
+      setError(mapAuthError(err, 'Could not create account. Email may already be in use.'));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-[var(--primary)] text-lg font-bold text-white">
-            G
-          </div>
-          <h1 className="text-2xl font-semibold text-[var(--foreground)]">
-            {onboardOnly ? 'Complete your workspace setup' : 'Create your account'}
-          </h1>
+    <AuthShell
+      title={onboardOnly ? 'Complete your workspace setup' : 'Create your account'}
+      subtitle={
+        onboardOnly
+          ? 'Tell us a bit about your workspace to finish setup.'
+          : 'Sign up with Google or create an email account.'
+      }
+      footer={
+        <>
+          Already have an account? <AuthLink href="/login">Sign in</AuthLink>
+        </>
+      }
+    >
+      {!onboardOnly ? (
+        <>
+          <GoogleSignInButton label="Sign up with Google" testId="google-sign-up" onError={setError} />
+          <AuthDivider />
+        </>
+      ) : null}
+
+      <form onSubmit={onSubmit} className="space-y-4" data-testid="signup-form">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium" htmlFor="name">
+            Name
+          </label>
+          <Input
+            id="name"
+            data-testid="signup-name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
-
-        <form onSubmit={onSubmit} className="space-y-4" data-testid="signup-form">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium" htmlFor="name">Name</label>
-            <Input
-              id="name"
-              data-testid="signup-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          {!onboardOnly ? (
-            <>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium" htmlFor="email">Email</label>
-                <Input
-                  id="email"
-                  data-testid="signup-email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium" htmlFor="password">Password</label>
-                <Input
-                  id="password"
-                  data-testid="signup-password"
-                  type="password"
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </>
-          ) : null}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium" htmlFor="org">Workspace name (optional)</label>
-            <Input
-              id="org"
-              data-testid="signup-org"
-              value={organizationName}
-              onChange={(e) => setOrganizationName(e.target.value)}
-            />
-          </div>
-          {error ? <p className="text-sm text-[var(--error)]">{error}</p> : null}
-          <Button type="submit" data-testid="signup-submit" disabled={loading} className="w-full">
-            {loading ? 'Creating…' : onboardOnly ? 'Complete setup' : 'Create account'}
-          </Button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-[var(--muted-foreground)]">
-          Already have an account?{' '}
-          <Link href="/login" className="font-medium text-[var(--primary)] hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </div>
-    </div>
+        {!onboardOnly ? (
+          <>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium" htmlFor="email">
+                Email
+              </label>
+              <Input
+                id="email"
+                data-testid="signup-email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium" htmlFor="password">
+                Password
+              </label>
+              <Input
+                id="password"
+                data-testid="signup-password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </>
+        ) : null}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium" htmlFor="org">
+            Workspace name (optional)
+          </label>
+          <Input
+            id="org"
+            data-testid="signup-org"
+            value={organizationName}
+            onChange={(e) => setOrganizationName(e.target.value)}
+          />
+        </div>
+        {error ? <p className="text-sm text-[var(--error)]">{error}</p> : null}
+        {success ? <p className="text-sm text-green-600">{success}</p> : null}
+        <Button type="submit" data-testid="signup-submit" disabled={loading} className="w-full">
+          {loading
+            ? 'Creating…'
+            : onboardOnly
+              ? 'Complete setup'
+              : 'Create account with email'}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }
