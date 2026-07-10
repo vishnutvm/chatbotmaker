@@ -32,8 +32,9 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/api/prisma ./apps/api/prisma
 COPY packages/types/package.json ./packages/types/
 COPY packages/config/package.json ./packages/config/
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/genie"
 RUN pnpm install --frozen-lockfile --prod --filter @genie/api... --ignore-scripts
-RUN cd apps/api && npx --yes prisma generate
+RUN cd apps/api && npx --yes prisma@6.19.3 generate
 
 FROM node:22-alpine AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
