@@ -18,7 +18,7 @@ export async function signInWithGoogle(): Promise<void> {
       redirectTo: getAuthCallbackUrl(),
       queryParams: {
         access_type: 'offline',
-        prompt: 'consent',
+        prompt: 'select_account',
       },
     },
   });
@@ -45,17 +45,27 @@ export async function routeAfterAuth(
 
 export async function completeOAuthCallback(router: AppRouter): Promise<string | null> {
   const queryParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const code = queryParams.get('code');
-  const authError = queryParams.get('error_description') ?? queryParams.get('error');
+  const authError =
+    queryParams.get('error_description') ??
+    queryParams.get('error') ??
+    hashParams.get('error_description') ??
+    hashParams.get('error');
 
   if (authError) {
-    return decodeURIComponent(authError);
+    return mapOAuthCallbackError(decodeURIComponent(authError));
   }
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      return error.message;
+      return mapOAuthCallbackError(error.message);
+    }
+  } else if (hashParams.get('access_token')) {
+    const { error } = await supabase.auth.getSession();
+    if (error) {
+      return mapOAuthCallbackError(error.message);
     }
   }
 
@@ -69,6 +79,18 @@ export async function completeOAuthCallback(router: AppRouter): Promise<string |
 
   await routeAfterAuth(session.access_token, router);
   return null;
+}
+
+function mapOAuthCallbackError(message: string): string {
+  if (message.includes('invalid_client') || message.includes('Unable to exchange external code')) {
+    return 'Google sign in is misconfigured. In Supabase, re-enter the Google Client ID and Client Secret from Google Cloud Console, then try again.';
+  }
+
+  if (message.includes('OAuth state parameter missing')) {
+    return 'Sign in session expired. Please start Google sign in again.';
+  }
+
+  return message;
 }
 
 export function mapAuthError(error: unknown, fallback: string): string {
