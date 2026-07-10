@@ -8,7 +8,7 @@
     "start": "node dist/main",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "jest --testPathPattern=src/",
-    "test:integration": "jest --testPathPattern=test/",
+    "test:integration": "jest --testPathPattern=test/ --runInBand",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
