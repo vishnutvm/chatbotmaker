@@ -31,16 +31,22 @@ export async function signInWithGoogle(): Promise<void> {
 export async function routeAfterAuth(
   accessToken: string,
   router: AppRouter,
-): Promise<void> {
+): Promise<string | null> {
   const client = createAuthClient(getApiBaseUrl());
-  const session = await client.session(accessToken);
 
-  if (!session.onboarded) {
+  try {
+    const session = await client.session(accessToken);
+    if (!session.onboarded) {
+      router.replace('/signup?onboard=1');
+      return null;
+    }
+    router.replace('/');
+    return null;
+  } catch {
+    // Supabase auth succeeded but API check failed — still allow onboard flow.
     router.replace('/signup?onboard=1');
-    return;
+    return null;
   }
-
-  router.replace('/');
 }
 
 export async function completeOAuthCallback(router: AppRouter): Promise<string | null> {
@@ -62,10 +68,18 @@ export async function completeOAuthCallback(router: AppRouter): Promise<string |
     if (error) {
       return mapOAuthCallbackError(error.message);
     }
-  } else if (hashParams.get('access_token')) {
-    const { error } = await supabase.auth.getSession();
-    if (error) {
-      return mapOAuthCallbackError(error.message);
+  } else {
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) {
+        return mapOAuthCallbackError(error.message);
+      }
     }
   }
 
@@ -74,11 +88,13 @@ export async function completeOAuthCallback(router: AppRouter): Promise<string |
   } = await supabase.auth.getSession();
 
   if (!session) {
+    if (!code && !hashParams.get('access_token')) {
+      return 'Sign in callback was empty. In Supabase URL Configuration, set Redirect URLs to https://chatbotmaker-dashboard-seven.vercel.app/auth/callback and try Google sign in again.';
+    }
     return 'Could not complete sign in. Please try again.';
   }
 
-  await routeAfterAuth(session.access_token, router);
-  return null;
+  return routeAfterAuth(session.access_token, router);
 }
 
 function mapOAuthCallbackError(message: string): string {
@@ -88,6 +104,10 @@ function mapOAuthCallbackError(message: string): string {
 
   if (message.includes('OAuth state parameter missing')) {
     return 'Sign in session expired. Please start Google sign in again.';
+  }
+
+  if (message.includes('code challenge') || message.includes('code verifier')) {
+    return 'Sign in session expired. Close this tab, return to login, and try Google sign in again.';
   }
 
   return message;

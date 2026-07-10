@@ -1,13 +1,11 @@
 'use client';
 
-import { createAuthClient } from '@genie/api-client';
 import { Button, Input } from '@genie/ui';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { AuthDivider, AuthLink, AuthShell } from '@/components/auth/auth-shell';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { mapAuthError, routeAfterAuth } from '@/lib/auth-flow';
-import { getApiBaseUrl } from '@/lib/auth-session';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
