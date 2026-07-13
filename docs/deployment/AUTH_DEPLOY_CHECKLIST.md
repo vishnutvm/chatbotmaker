@@ -18,7 +18,7 @@ Required for login → onboard → dashboard on production.
 |----------|---------|
 | `CORS_ORIGINS` | `https://chatbotmaker-dev.vercel.app,http://localhost:3000` |
 | `SUPABASE_URL` | Same as Vercel `NEXT_PUBLIC_SUPABASE_URL` |
-| `SUPABASE_JWT_SECRET` | Supabase → Settings → API → JWT Secret |
+| `SUPABASE_JWT_SECRET` | Only for local/CI (`http://` Supabase). **Hosted Supabase uses JWKS automatically.** |
 | `DATABASE_URL` | Supabase Postgres connection string |
 
 ## Supabase → Authentication → URL Configuration
@@ -42,7 +42,13 @@ Remove old `chatbotmaker-dashboard-seven.vercel.app` URLs.
   → /dashboard
 ```
 
-## Verify
+## If onboard returns 401 but session returns 200
+
+`session` tolerates invalid tokens; `onboard` requires a valid Supabase JWT.
+
+1. Railway `SUPABASE_URL` must match Vercel `NEXT_PUBLIC_SUPABASE_URL` (same project).
+2. For `https://*.supabase.co`, the API verifies JWTs via **JWKS** — redeploy after setting `SUPABASE_URL`.
+3. Do not point `SUPABASE_URL` at `http://127.0.0.1` in production.
 
 1. `https://chatbotmaker-dev.vercel.app/login` — form loads
 2. Google or email login — lands on `/signup?onboard=1` (new user) or `/dashboard` (returning)
