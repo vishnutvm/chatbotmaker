@@ -34,10 +34,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const client = createAuthClient(getApiBaseUrl());
     try {
-      const me = await client.me(token);
-      setUser(me.user);
-      setOrganizations(me.organizations);
-      setActiveOrgId((current) => current ?? me.organizations[0]?.id ?? null);
+      const session = await client.session(token);
+      if (session.onboarded && session.user) {
+        setUser(session.user);
+        setOrganizations(session.organizations ?? []);
+        setActiveOrgId((current) => current ?? session.organizations?.[0]?.id ?? null);
+      } else {
+        setUser(null);
+        setOrganizations([]);
+      }
     } catch {
       setUser(null);
       setOrganizations([]);

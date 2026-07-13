@@ -9,9 +9,11 @@ import { AuthDivider, AuthLink, AuthShell } from '@/components/auth/auth-shell';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { mapAuthError } from '@/lib/auth-flow';
 import { getApiBaseUrl, getSession, supabase } from '@/lib/supabase';
+import { useAuth } from '@/providers/auth-provider';
 
 export function SignupForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const searchParams = useSearchParams();
   const onboardOnly = searchParams.get('onboard') === '1';
 
@@ -43,6 +45,7 @@ export function SignupForm() {
       email: userEmail,
       organizationName: organizationName || undefined,
     });
+    await refresh();
     router.replace('/dashboard');
   }
 

@@ -23,7 +23,8 @@ export default function LoginPage() {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError || !data.session) throw signInError ?? new Error('Sign in failed');
-      await routeAfterAuth(data.session.access_token, router);
+      const routeError = await routeAfterAuth(data.session.access_token, router);
+      if (routeError) throw new Error(routeError);
     } catch (err) {
       setError(mapAuthError(err, 'Invalid email or password'));
     } finally {

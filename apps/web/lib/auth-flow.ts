@@ -41,8 +41,7 @@ export async function routeAfterAuth(
     router.replace('/dashboard');
     return null;
   } catch {
-    router.replace('/signup?onboard=1');
-    return null;
+    return 'Could not reach the API. Verify NEXT_PUBLIC_API_URL and Railway CORS_ORIGINS include this site.';
   }
 }
 
@@ -122,6 +121,12 @@ export function mapAuthError(error: unknown, fallback: string): string {
   }
   if (message.includes('Email not confirmed')) {
     return 'Please confirm your email before signing in.';
+  }
+  if (message.includes('Network error') || message.includes('CORS')) {
+    return message;
+  }
+  if (message.includes('User already onboarded') || message.includes('already onboarded')) {
+    return 'Account already set up. Try signing in again.';
   }
 
   return message || fallback;
