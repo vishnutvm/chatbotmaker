@@ -13,6 +13,7 @@ test.describe('Web app smoke', () => {
     await expect(page.getByTestId('login-email')).toBeVisible();
     await expect(page.getByTestId('login-password')).toBeVisible();
     await expect(page.getByTestId('login-submit')).toBeVisible();
+    await expect(page.getByTestId('google-sign-in')).toBeVisible();
   });
 
   test('signup page renders form', async ({ page }) => {
@@ -22,6 +23,7 @@ test.describe('Web app smoke', () => {
     await expect(page.getByTestId('signup-email')).toBeVisible();
     await expect(page.getByTestId('signup-password')).toBeVisible();
     await expect(page.getByTestId('signup-submit')).toBeVisible();
+    await expect(page.getByTestId('google-sign-up')).toBeVisible();
   });
 
   test('marketing header get started links to signup', async ({ page }) => {

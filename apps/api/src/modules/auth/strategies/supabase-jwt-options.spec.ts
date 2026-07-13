@@ -47,8 +47,10 @@ describe('buildSupabaseJwtStrategyOptions', () => {
     expect(options).toHaveProperty('secretOrKeyProvider');
     expect(options).not.toHaveProperty('secretOrKey');
     expect(options.algorithms).toEqual(['ES256', 'RS256']);
-    expect(options.issuer).toBe('https://rocxcjxaqceqndkymujl.supabase.co/auth/v1');
-    expect(options.audience).toBe('authenticated');
+    expect('issuer' in options && options.issuer).toBe(
+      'https://rocxcjxaqceqndkymujl.supabase.co/auth/v1',
+    );
+    expect('audience' in options && options.audience).toBe('authenticated');
     expect(options.ignoreExpiration).toBe(false);
   });
 
@@ -60,7 +62,7 @@ describe('buildSupabaseJwtStrategyOptions', () => {
     expect(options).toHaveProperty('secretOrKey');
     expect(options).not.toHaveProperty('secretOrKeyProvider');
     expect(options.algorithms).toEqual(['HS256']);
-    expect(options.issuer).toBeUndefined();
-    expect(options.audience).toBeUndefined();
+    expect('issuer' in options).toBe(false);
+    expect('audience' in options).toBe(false);
   });
 });
