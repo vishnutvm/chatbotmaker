@@ -31,6 +31,8 @@ Thumbs.db
 
 # Test
 coverage/
+apps/e2e/playwright-report/
+apps/e2e/test-results/
 
 # Misc
 *.tsbuildinfo

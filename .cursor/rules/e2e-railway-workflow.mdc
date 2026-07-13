@@ -1,0 +1,45 @@
+---
+description: Run E2E tests after auth/deploy changes; keep Railway CORS in sync
+globs: apps/web/**,apps/api/**,apps/e2e/**,.github/workflows/**
+alwaysApply: false
+---
+
+# E2E + Railway Workflow
+
+After **any auth, API, or deploy-related change**, run E2E before marking complete.
+
+## Required verification loop
+
+```text
+Change code
+  → pnpm build
+  → pnpm --filter @genie/e2e test   (or smoke + auth-api minimum)
+  → fix failures
+  → re-test
+  → push
+  → confirm Railway CORS_ORIGINS + Supabase URLs for production
+```
+
+## Minimum test command
+
+```bash
+pnpm build
+pnpm --filter @genie/e2e exec playwright test tests/smoke.spec.ts tests/auth-guards.spec.ts tests/auth-api.spec.ts
+```
+
+## Production auth (Railway)
+
+When frontend domain changes, update Railway:
+
+```text
+CORS_ORIGINS=https://<vercel-domain>,http://localhost:3000
+```
+
+See `docs/deployment/AUTH_DEPLOY_CHECKLIST.md`.
+
+## Do not mark auth work complete without
+
+- [ ] E2E smoke + auth-guards pass
+- [ ] E2E auth-api pass (onboard → session → me)
+- [ ] E2E auth-flow pass when Supabase secrets available
+- [ ] Railway CORS documented/updated for live domain

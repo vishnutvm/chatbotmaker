@@ -148,6 +148,7 @@ jobs:
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
       SUPABASE_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
       SUPABASE_URL: http://127.0.0.1:54321
+      CORS_ORIGINS: http://localhost:3000
       E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
       E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
       CI: true

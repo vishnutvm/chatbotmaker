@@ -10,6 +10,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0",
-    "@supabase/supabase-js": "^2.49.8"
+    "@supabase/supabase-js": "^2.49.8",
+    "@types/jsonwebtoken": "^9.0.9",
+    "jsonwebtoken": "^9.0.2"
   }
 }
