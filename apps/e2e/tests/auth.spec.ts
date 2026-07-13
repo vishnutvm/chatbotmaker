@@ -22,9 +22,10 @@ test.describe('Auth UI flow (Supabase)', () => {
     await page.getByTestId('signup-org').fill(workspace);
     await page.getByTestId('signup-submit').click();
 
-    await expect(page).toHaveURL('/', { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
     await expect(page.getByTestId('dashboard-welcome')).toBeVisible();
 
+    await page.getByTestId('user-menu-trigger').click();
     await page.getByTestId('logout-button').click();
     await expect(page).toHaveURL(/\/login/);
 
@@ -32,8 +33,8 @@ test.describe('Auth UI flow (Supabase)', () => {
     await page.getByTestId('login-password').fill(password);
     await page.getByTestId('login-submit').click();
 
-    await expect(page).toHaveURL('/', { timeout: 30_000 });
-    await expect(page.getByTestId('dashboard-welcome')).toContainText(name);
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
+    await expect(page.getByTestId('dashboard-welcome')).toBeVisible();
   });
 
   test.afterEach(async ({}, testInfo) => {

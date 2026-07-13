@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.28.2",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@genie/web --filter=@genie/api",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test --filter=!@genie/e2e",

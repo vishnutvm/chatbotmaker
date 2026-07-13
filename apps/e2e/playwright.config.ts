@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const dashboardPort = process.env.E2E_DASHBOARD_PORT ?? '3001';
+const dashboardPort = process.env.E2E_DASHBOARD_PORT ?? '3000';
 const apiPort = process.env.E2E_API_PORT ?? '4000';
 const dashboardUrl = process.env.E2E_DASHBOARD_URL ?? `http://localhost:${dashboardPort}`;
 const apiUrl = process.env.E2E_API_URL ?? `http://localhost:${apiPort}`;
@@ -54,7 +54,7 @@ export default defineConfig({
             },
           },
           {
-            command: 'pnpm --filter @genie/dashboard start',
+            command: 'pnpm --filter @genie/web start',
             url: dashboardUrl,
             reuseExistingServer: !process.env.CI,
             timeout: 120_000,

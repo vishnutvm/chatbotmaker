@@ -12,11 +12,10 @@ Cloudflare (DNS/CDN)
     +----------------------+
     |                      |
     v                      v
-Marketing (Vercel)    Dashboard (Vercel)
-    |                      |
-    +----------+-----------+
-               |
-               v
+Marketing + Dashboard (Vercel — single app)
+    |
+    v
+apps/web (port 3000 dev)
           NestJS API (Railway)
                |
        +-------+-------+
@@ -29,14 +28,15 @@ Marketing (Vercel)    Dashboard (Vercel)
 
 ## Services
 
-### Vercel — Frontends
+### Vercel — Web (unified frontend)
 
 | App | Root | Port (dev) |
 |-----|------|------------|
-| marketing | `apps/marketing` | 3000 |
-| dashboard | `apps/dashboard` | 3001 |
+| web | `apps/web` | 3000 |
 
-**Env vars (dashboard):**
+See `docs/deployment/VERCEL_WEB.md`.
+
+**Env vars:**
 - `NEXT_PUBLIC_API_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -84,7 +84,7 @@ Deploy triggers:
 
 ```bash
 pnpm install
-# Configure apps/api/.env and apps/dashboard/.env.local
+# Configure apps/api/.env and apps/web/.env.local
 cd apps/api && npx prisma migrate dev
 pnpm dev
 ```

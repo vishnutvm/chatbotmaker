@@ -51,8 +51,7 @@ Every data-driven UI must handle:
 
 | App | Path | Rendering |
 |-----|------|-----------|
-| Marketing | `apps/marketing/` | SSR/SSG for SEO |
-| Dashboard | `apps/dashboard/` | CSR + Server Components |
+| Marketing + Dashboard | `apps/web/` | SSR marketing + client dashboard shell |
 | Widget | `apps/widget/` | Minimal bundle size |
 | Legacy | `dashboard/` | Current landing (migrate to `apps/marketing`) |
 

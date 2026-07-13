@@ -1,38 +1,28 @@
 ---
-description: Frontend engineering — Next.js presentation layer, no business logic
-globs: apps/dashboard/**,apps/marketing/**,apps/widget/**,dashboard/**
+description: Frontend engineering — unified apps/web Next.js application
+globs: apps/web/**,packages/api-client/**
 alwaysApply: false
 ---
 
 # Frontend Engineering (Next.js)
 
-Apps: `apps/marketing/` (SSR/SSG), `apps/dashboard/` (CSR + Server Components), `apps/widget/` (embed).
+**Single app:** `apps/web/` — marketing + auth + dashboard.
 
-## Layer Rules
+## Route groups
 
-- **Presentation only** — no business logic in components.
-- Call backend via `packages/api-client` or typed fetch wrappers.
-- Validate forms client-side for UX; **server validates authoritatively**.
-- Use shared UI from `packages/ui` when available.
+| Group | Path | Rendering |
+|-------|------|-----------|
+| `(marketing)` | `/` | SSR/SSG sections |
+| `(auth)` | `/login`, `/signup` | Client |
+| `(dashboard)` | `/dashboard/**` | Client shell + pages |
 
-## Conventions
+## Rules
 
-- Functional components with TypeScript.
-- Colocate component-specific hooks; extract reusable hooks to `hooks/`.
-- Use Tailwind for styling; follow existing design tokens.
-- Handle loading, error, and empty states explicitly.
-- Auth state via secure cookies/tokens — never store secrets in localStorage.
+- Presentation only — business logic in NestJS (`apps/api`)
+- Use `@genie/api-client` for API calls (replace mock store over time)
+- Design system: `app/globals.css` tokens (indigo accent, neutral surfaces)
+- Do not recreate `apps/dashboard` or `apps/marketing` — deprecated
 
-## Marketing vs Dashboard
+## UI source
 
-| App | Rendering | Purpose |
-|-----|-----------|---------|
-| `apps/marketing` | SSR/SSG | SEO, landing, public pages |
-| `apps/dashboard` | CSR-heavy | Authenticated app shell |
-| `apps/widget` | Minimal bundle | Embeddable chat widget |
-
-## Do Not
-
-- Duplicate API business rules in the frontend.
-- Call MongoDB, Redis, or OpenAI from frontend code.
-- Skip accessibility (semantic HTML, labels, keyboard nav).
+Dashboard UI ported from agentbloom-io reference. Extend via `features/dashboard/pages/` and `components/`.

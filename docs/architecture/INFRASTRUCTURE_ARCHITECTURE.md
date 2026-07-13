@@ -9,7 +9,7 @@
 
 | Layer | Platform | Notes |
 |-------|----------|-------|
-| Frontends | Vercel Free | `apps/marketing`, `apps/dashboard` |
+| Frontends | Vercel Free (`apps/web`) |
 | API | Railway + Docker | `apps/api` via `docker/Dockerfile` |
 | Database | Supabase PostgreSQL | Prisma ORM, connection pooling |
 | Authentication | Supabase Auth | Identity provider |

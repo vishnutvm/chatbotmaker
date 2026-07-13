@@ -2,19 +2,18 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Create Assistant wizard', () => {
   test('first-time dashboard shows onboarding CTA', async ({ page }) => {
-    await page.goto('/');
-    // If not authenticated, will redirect to login — skip in CI without auth
+    await page.goto('/dashboard');
     if (page.url().includes('/login')) {
       test.skip();
       return;
     }
-    const cta = page.getByRole('link', { name: /Create Your First Assistant/i });
+    const cta = page.getByRole('link', { name: /Create.*[Aa]ssistant/i });
     const dashboard = page.getByTestId('dashboard-welcome');
     await expect(cta.or(dashboard)).toBeVisible();
   });
 
   test('wizard create step renders purpose cards', async ({ page }) => {
-    await page.goto('/assistants/new/create');
+    await page.goto('/dashboard/assistants/new/create');
     if (page.url().includes('/login')) {
       test.skip();
       return;

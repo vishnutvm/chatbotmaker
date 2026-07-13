@@ -19,8 +19,7 @@ pnpm dev
 
 | App | URL | Package |
 |-----|-----|---------|
-| Marketing | http://localhost:3000 | `@genie/marketing` |
-| Dashboard | http://localhost:3001 | `@genie/dashboard` |
+| Web (marketing + auth + dashboard) | http://localhost:3000 | `@genie/web` |
 | API | http://localhost:4000/health | `@genie/api` |
 
 ---
@@ -29,7 +28,7 @@ pnpm dev
 
 ```text
 chatbotmaker/
-├── apps/           # marketing, dashboard, api, widget
+├── apps/           # web, api, widget, e2e
 ├── packages/       # types, ui, api-client, config
 ├── .cursor/        # AI engineering rules & skills (repo-local)
 └── AGENTS.md       # Pointer to docs repo + Cursor entry
@@ -53,12 +52,11 @@ chatbotmaker/
 
 | App | URL |
 |-----|-----|
-| **Marketing** | https://chatbotmaker-marketing.vercel.app |
-| **Dashboard** | https://chatbotmaker-dashboard-seven.vercel.app |
+| **Web (Vercel)** | Configure root `apps/web` — see `docs/deployment/VERCEL_WEB.md` |
 | **API (Railway)** | https://genie-api-production-4bb3.up.railway.app |
 | **API (Render fallback)** | https://genie-api-rsfy.onrender.com |
 
-`NEXT_PUBLIC_API_URL` on dashboard → Railway URL. Full registry in **chatbotmaker-docs** → `ACCESS.md`.
+`NEXT_PUBLIC_API_URL` on web app → Railway URL. Full registry in **chatbotmaker-docs** → `ACCESS.md`.
 
 ---
 
@@ -91,8 +89,7 @@ Key local docs:
 
 | App | Host | Root directory |
 |-----|------|----------------|
-| Marketing | Vercel | `apps/marketing` |
-| Dashboard | Vercel | `apps/dashboard` |
+| Web | Vercel | `apps/web` |
 | API | Railway (primary) / Render (fallback) | `docker/Dockerfile` |
 
-Import this repo on Vercel; connect GitHub on Railway. See **chatbotmaker-docs** for URLs, SSH, and mirror setup.
+Import this repo on Vercel with **Root Directory** `apps/web`. Connect GitHub on Railway. See `docs/deployment/VERCEL_WEB.md` and **chatbotmaker-docs** for URLs and env vars.

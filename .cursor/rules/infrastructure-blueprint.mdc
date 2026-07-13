@@ -11,7 +11,7 @@ Canonical source: [chatbotmaker-docs — Docs/04-infrastructure.md](https://gith
 
 | Layer | Platform |
 |-------|----------|
-| Frontends | Vercel Free (`apps/marketing`, `apps/dashboard`) |
+| Frontends | Vercel Free (`apps/web`) |
 | API | Railway + Docker (`apps/api`) |
 | Database | Supabase PostgreSQL (Prisma ORM) |
 | Authentication | Supabase Auth |

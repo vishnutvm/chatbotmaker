@@ -20,8 +20,7 @@ Hosting: Vercel (frontends), Railway (API — MVP), AWS ECS (API — production)
 
 | App | Target (MVP) | Target (production) |
 |-----|--------------|---------------------|
-| `apps/marketing` | Vercel | Vercel |
-| `apps/dashboard` | Vercel | Vercel |
+| `apps/web` | Vercel | Vercel |
 | `apps/api` | Railway + Docker | AWS ECS Fargate + ALB |
 | `apps/widget` | CDN (Cloudflare) | CDN (Cloudflare) |
 
