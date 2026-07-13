@@ -17,7 +17,8 @@ Required for login → onboard → dashboard on production.
 | Variable | Example |
 |----------|---------|
 | `CORS_ORIGINS` | `https://chatbotmaker-dev.vercel.app,http://localhost:3000` |
-| `SUPABASE_URL` | Same as Vercel `NEXT_PUBLIC_SUPABASE_URL` |
+| `SUPABASE_URL` | **Required.** `https://rocxcjxaqceqndkymujl.supabase.co` (must match Vercel) |
+| `NODE_ENV` | `production` |
 | `SUPABASE_JWT_SECRET` | Only for local/CI (`http://` Supabase). **Hosted Supabase uses JWKS automatically.** |
 | `DATABASE_URL` | Supabase Postgres connection string |
 
