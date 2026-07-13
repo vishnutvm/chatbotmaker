@@ -1,10 +1,11 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { getCorsOrigins, validateProductionEnv } from './config/env';
+import { getCorsOrigins, logStartupEnv, validateProductionEnv } from './config/env';
 
 async function bootstrap() {
   validateProductionEnv();
+  logStartupEnv();
 
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();

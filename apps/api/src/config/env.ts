@@ -72,3 +72,86 @@ export function getCorsOrigins(): string[] {
   }
   return raw.split(',').map((o) => o.trim()).filter(Boolean);
 }
+
+/** Redact password from Postgres URLs for safe logging. */
+export function redactPostgresUrl(url: string | undefined): string {
+  if (!url?.trim()) {
+    return '(not set)';
+  }
+
+  try {
+    const parsed = new URL(url);
+    const username = parsed.username ? `${decodeURIComponent(parsed.username)}:***@` : '';
+    const database = parsed.pathname.replace(/^\//, '') || 'postgres';
+    const port = parsed.port || '5432';
+    const query = parsed.search || '';
+
+    return `postgresql://${username}${parsed.hostname}:${port}/${database}${query}`;
+  } catch {
+    return '(invalid url)';
+  }
+}
+
+function secretPresence(value: string | undefined): 'set' | 'unset' {
+  return value?.trim() ? 'set' : 'unset';
+}
+
+function resolveJwtVerificationMode(supabaseUrl: string): 'jwks' | 'hs256-secret' {
+  const normalized = supabaseUrl.replace(/\/$/, '');
+  if (!normalized.startsWith('https://')) {
+    return 'hs256-secret';
+  }
+  if (normalized.includes('127.0.0.1') || normalized.includes('localhost')) {
+    return 'hs256-secret';
+  }
+  return 'jwks';
+}
+
+export type StartupEnvSnapshot = {
+  nodeEnv: string;
+  port: string;
+  supabaseUrl: string;
+  jwtVerification: 'jwks' | 'hs256-secret';
+  databaseUrl: string;
+  directUrl: string;
+  corsOrigins: string[];
+  secrets: {
+    supabaseJwtSecret: 'set' | 'default-dev-fallback' | 'unset';
+    supabaseServiceRoleKey: 'set' | 'unset';
+    openaiApiKey: 'set' | 'unset';
+    stripeSecretKey: 'set' | 'unset';
+  };
+};
+
+/** Safe snapshot for Railway/debug logs — never includes raw secrets. */
+export function buildStartupEnvSnapshot(): StartupEnvSnapshot {
+  const supabaseUrl = getSupabaseUrl();
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+
+  return {
+    nodeEnv: process.env.NODE_ENV ?? '(not set)',
+    port: process.env.PORT ?? '4000 (default)',
+    supabaseUrl,
+    jwtVerification: resolveJwtVerificationMode(supabaseUrl),
+    databaseUrl: redactPostgresUrl(process.env.DATABASE_URL),
+    directUrl: redactPostgresUrl(process.env.DIRECT_URL),
+    corsOrigins: getCorsOrigins(),
+    secrets: {
+      supabaseJwtSecret: jwtSecret?.trim()
+        ? 'set'
+        : process.env.SUPABASE_JWT_SECRET === ''
+          ? 'unset'
+          : 'default-dev-fallback',
+      supabaseServiceRoleKey: secretPresence(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      openaiApiKey: secretPresence(process.env.OPENAI_API_KEY),
+      stripeSecretKey: secretPresence(process.env.STRIPE_SECRET_KEY),
+    },
+  };
+}
+
+/** Log env at boot so Railway deploy logs show what the API actually received. */
+export function logStartupEnv(): void {
+  const snapshot = buildStartupEnvSnapshot();
+  console.log('[genie-api] Startup environment (secrets redacted):');
+  console.log(JSON.stringify(snapshot, null, 2));
+}

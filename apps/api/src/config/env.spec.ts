@@ -1,4 +1,9 @@
-import { validateProductionEnv, validateSupabaseUrlForProduction } from './env';
+import {
+  buildStartupEnvSnapshot,
+  redactPostgresUrl,
+  validateProductionEnv,
+  validateSupabaseUrlForProduction,
+} from './env';
 
 describe('validateSupabaseUrlForProduction', () => {
   it('rejects missing URL', () => {
@@ -63,5 +68,45 @@ describe('validateProductionEnv', () => {
     process.env.SUPABASE_URL = 'https://rocxcjxaqceqndkymujl.supabase.co';
 
     expect(() => validateProductionEnv()).not.toThrow();
+  });
+});
+
+describe('redactPostgresUrl', () => {
+  it('redacts password and preserves host, user, port, database', () => {
+    const redacted = redactPostgresUrl(
+      'postgresql://postgres.rocxcjxaqceqndkymujl:secret@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true',
+    );
+
+    expect(redacted).toBe(
+      'postgresql://postgres.rocxcjxaqceqndkymujl:***@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true',
+    );
+    expect(redacted).not.toContain('secret');
+  });
+
+  it('returns not set for empty values', () => {
+    expect(redactPostgresUrl(undefined)).toBe('(not set)');
+    expect(redactPostgresUrl('')).toBe('(not set)');
+  });
+});
+
+describe('buildStartupEnvSnapshot', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it('reports jwks mode for hosted Supabase without exposing secrets', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.SUPABASE_URL = 'https://rocxcjxaqceqndkymujl.supabase.co';
+    process.env.DATABASE_URL =
+      'postgresql://postgres.rocxcjxaqceqndkymujl:secret@aws-1-ap-south-1.pooler.supabase.com:6543/postgres';
+    process.env.CORS_ORIGINS = 'https://chatbotmaker-dev.vercel.app';
+
+    const snapshot = buildStartupEnvSnapshot();
+
+    expect(snapshot.jwtVerification).toBe('jwks');
+    expect(snapshot.databaseUrl).not.toContain('secret');
+    expect(snapshot.corsOrigins).toEqual(['https://chatbotmaker-dev.vercel.app']);
   });
 });
