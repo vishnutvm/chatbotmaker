@@ -8,10 +8,11 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { conversations, analyticsSeries } from "@/lib/mock/data";
 import { useAssistants } from "@/lib/store";
+import { useAuth } from '@/providers/auth-provider';
+import { greetingForName } from '@/lib/identity';
 import {
   ArrowRight,
   Plus,
-  Bot,
   BookOpen,
   MessageSquarePlus,
   PlayCircle,
@@ -24,6 +25,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const assistants = useAssistants();
   const totalConvos = assistants.reduce((a, b) => a + b.conversations, 0);
   const totalMsgs = assistants.reduce((a, b) => a + b.messages, 0);
@@ -34,7 +36,7 @@ export default function Dashboard() {
       <TopHeader breadcrumb={<span className="text-foreground">Home</span>} />
       <div className="mx-auto max-w-[1240px] px-6 py-8 space-y-8" data-testid="dashboard-welcome">
         <PageHeader
-          title="Good morning, Sarah"
+          title={greetingForName(user?.name)}
           description="Here's what's happening with your AI assistants today."
           actions={
             <Button asChild size="lg" className="h-10">
@@ -94,7 +96,6 @@ export default function Dashboard() {
           <div className="rounded-xl border border-border bg-surface p-5">
             <h2 className="text-base font-semibold text-foreground">Quick actions</h2>
             <div className="mt-4 space-y-1.5">
-              <QuickAction href="/dashboard/assistants/new/create" icon={Bot} label="Create assistant" />
               <QuickAction href="/dashboard/assistants/acme-support/knowledge" icon={BookOpen} label="Add knowledge" />
               <QuickAction href="/dashboard/assistants/acme-support/test" icon={PlayCircle} label="Test assistant" />
               <QuickAction href="/dashboard/conversations" icon={MessageSquarePlus} label="View conversations" />

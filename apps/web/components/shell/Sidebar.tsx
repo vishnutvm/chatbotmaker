@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/providers/auth-provider';
+import { companyInitials } from '@/lib/identity';
 
 const primary = [
   { href: '/dashboard', label: 'Home', icon: Home },
@@ -102,17 +103,21 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <span className="text-[15px] font-semibold tracking-tight text-foreground">Genie</span>
         </Link>
-        <div className="mt-3 flex w-full items-center gap-2 rounded-md border border-border bg-surface px-2 py-1.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-surface-muted text-xs font-semibold text-foreground">
-            {(activeOrg?.name ?? 'C').slice(0, 2).toUpperCase()}
+        <Link
+          href="/dashboard/settings"
+          onClick={onNavigate}
+          className="mt-3 flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Company settings for ${activeOrg?.name ?? 'your company'}`}
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-xs font-semibold text-primary">
+            {companyInitials(activeOrg?.name)}
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] font-medium text-foreground">
               {activeOrg?.name ?? 'Company'}
             </div>
-            <div className="truncate text-[11px] text-muted-foreground">Your company</div>
           </div>
-        </div>
+        </Link>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-6">
@@ -156,6 +161,7 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             <button
               type="button"
               data-testid="user-menu-trigger"
+              aria-label="Account menu"
               className="mt-1 flex w-full items-center gap-2 rounded-md p-1.5 text-left transition-colors hover:bg-surface-muted"
             >
               <Avatar className="h-7 w-7">
