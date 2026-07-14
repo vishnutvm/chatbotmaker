@@ -156,13 +156,6 @@ export const integrations = [
   { id: "custom-api", name: "Custom API", description: "Connect any REST API as an AI action.", category: "Developer Tools", connected: true },
 ];
 
-export const teamMembers = [
-  { id: "u1", name: "Sarah Chen", email: "sarah@acme.com", role: "Owner", initials: "SC" },
-  { id: "u2", name: "Marcus Lee", email: "marcus@acme.com", role: "Admin", initials: "ML" },
-  { id: "u3", name: "Priya Sharma", email: "priya@acme.com", role: "Member", initials: "PS" },
-  { id: "u4", name: "David Osei", email: "david@acme.com", role: "Viewer", initials: "DO" },
-];
-
 export const purposes = [
   { id: "support", title: "Customer Support", description: "Answer questions about your product and reduce ticket volume.", icon: "LifeBuoy" },
   { id: "sales", title: "Sales Assistant", description: "Qualify leads, answer pricing questions and book demos.", icon: "TrendingUp" },

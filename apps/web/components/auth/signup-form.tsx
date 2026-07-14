@@ -85,10 +85,10 @@ export function SignupForm() {
 
   return (
     <AuthShell
-      title={onboardOnly ? 'Complete your workspace setup' : 'Create your account'}
+      title={onboardOnly ? 'Complete your company setup' : 'Create your account'}
       subtitle={
         onboardOnly
-          ? 'Tell us a bit about your workspace to finish setup.'
+          ? 'Tell us a bit about your company to finish setup.'
           : 'Sign up with Google or create an email account.'
       }
       footer={
@@ -129,7 +129,7 @@ export function SignupForm() {
         ) : null}
         <div>
           <label className="mb-1.5 block text-sm font-medium" htmlFor="org">
-            Workspace name (optional)
+            Company name (optional)
           </label>
           <Input id="org" data-testid="signup-org" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} className="h-11" />
         </div>

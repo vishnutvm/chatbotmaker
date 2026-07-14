@@ -13,7 +13,7 @@ const usage = [
   { label: "Conversations", used: 1713, limit: 5000 },
   { label: "AI usage (tokens)", used: 1_900_000, limit: 3_000_000 },
   { label: "Knowledge storage", used: 420, limit: 2000, unit: "MB" },
-  { label: "Team members", used: 4, limit: 10 },
+  { label: "Assistants", used: 4, limit: 10 },
 ];
 
 export default function Billing() {
@@ -21,7 +21,7 @@ export default function Billing() {
     <>
       <TopHeader breadcrumb={<span className="text-foreground">Billing</span>} />
       <div className="mx-auto max-w-[1080px] px-6 py-8 space-y-6">
-        <PageHeader title="Billing & usage" description="Manage your plan, seats and AI usage." />
+        <PageHeader title="Billing & usage" description="Manage your plan and AI usage." />
 
         <div className="rounded-xl border border-border bg-surface p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

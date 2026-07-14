@@ -10,9 +10,7 @@ import {
   Plug,
   Settings,
   LifeBuoy,
-  ChevronsUpDown,
   Sparkles,
-  Users,
   CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,8 +34,7 @@ const primary = [
 
 const extend = [{ href: '/dashboard/integrations', label: 'Integrations', icon: Plug }] as const;
 
-const workspace = [
-  { href: '/dashboard/team', label: 'Team', icon: Users },
+const account = [
   { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ] as const;
@@ -86,7 +83,7 @@ function NavItem({
 }
 
 export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
-  const { user, activeOrg, organizations, logout } = useAuth();
+  const { user, activeOrg, logout } = useAuth();
   const initials = user?.name
     ? user.name
         .split(' ')
@@ -105,32 +102,17 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <span className="text-[15px] font-semibold tracking-tight text-foreground">Genie</span>
         </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="mt-3 flex w-full items-center gap-2 rounded-md border border-border bg-surface px-2 py-1.5 text-left transition-colors hover:bg-surface-muted">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-surface-muted text-xs font-semibold text-foreground">
-                {(activeOrg?.name ?? 'O').slice(0, 2).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-medium text-foreground">
-                  {activeOrg?.name ?? 'Organization'}
-                </div>
-                <div className="truncate text-[11px] text-muted-foreground">
-                  {organizations.length} workspace{organizations.length === 1 ? '' : 's'}
-                </div>
-              </div>
-              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-              Workspaces
-            </DropdownMenuLabel>
-            {organizations.map((org) => (
-              <DropdownMenuItem key={org.id}>{org.name}</DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="mt-3 flex w-full items-center gap-2 rounded-md border border-border bg-surface px-2 py-1.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-surface-muted text-xs font-semibold text-foreground">
+            {(activeOrg?.name ?? 'C').slice(0, 2).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[13px] font-medium text-foreground">
+              {activeOrg?.name ?? 'Company'}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">Your company</div>
+          </div>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-6">
@@ -151,10 +133,10 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         </div>
         <div>
           <div className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Workspace
+            Account
           </div>
           <div className="space-y-0.5">
-            {workspace.map((item) => (
+            {account.map((item) => (
               <NavItem key={item.href} {...item} onNavigate={onNavigate} />
             ))}
           </div>

@@ -50,7 +50,7 @@ export function DashboardShell({
   children,
   userName = 'User',
   userEmail,
-  orgName = 'My Workspace',
+  orgName = 'My Company',
   orgs = [],
   onLogout,
   header,

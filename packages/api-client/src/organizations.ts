@@ -1,11 +1,7 @@
 import type {
-  AddOrganizationMemberRequest,
   CreateOrganizationRequest,
   OrganizationDetail,
-  OrganizationMemberDto,
-  OrganizationMembersResponse,
   OrganizationsListResponse,
-  UpdateOrganizationMemberRequest,
   UpdateOrganizationRequest,
 } from '@genie/types';
 import { GenieApiClient } from './client';
@@ -33,42 +29,6 @@ export class GenieOrganizationsClient extends GenieApiClient {
       body,
       accessToken,
     );
-  }
-
-  listMembers(accessToken: string, organizationId: string): Promise<OrganizationMembersResponse> {
-    return this.getJson<OrganizationMembersResponse>(
-      `/api/v1/organizations/${organizationId}/members`,
-      accessToken,
-    );
-  }
-
-  addMember(
-    accessToken: string,
-    organizationId: string,
-    body: AddOrganizationMemberRequest,
-  ): Promise<OrganizationMemberDto> {
-    return this.postJson<OrganizationMemberDto>(
-      `/api/v1/organizations/${organizationId}/members`,
-      body,
-      accessToken,
-    );
-  }
-
-  updateMember(
-    accessToken: string,
-    organizationId: string,
-    userId: string,
-    body: UpdateOrganizationMemberRequest,
-  ): Promise<OrganizationMemberDto> {
-    return this.patchJson<OrganizationMemberDto>(
-      `/api/v1/organizations/${organizationId}/members/${userId}`,
-      body,
-      accessToken,
-    );
-  }
-
-  removeMember(accessToken: string, organizationId: string, userId: string): Promise<void> {
-    return this.deleteRequest(`/api/v1/organizations/${organizationId}/members/${userId}`, accessToken);
   }
 }
 

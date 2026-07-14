@@ -35,7 +35,7 @@ export class AuthService {
       emailVerified: true,
     });
 
-    const orgName = dto.organizationName?.trim() || `${dto.name.trim()}'s Workspace`;
+    const orgName = dto.organizationName?.trim() || `${dto.name.trim()}'s Company`;
     const { organization, membership } = await this.organizationsRepository.createWithOwner({
       name: orgName,
       slug: slugifyOrganizationName(orgName),

@@ -11,7 +11,6 @@ import { Switch } from '@/components/ui/switch';
 import { Copy, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrganizationsClient } from '@genie/api-client';
-import type { OrganizationMemberDto } from '@genie/types';
 import { useAuth } from '@/providers/auth-provider';
 import { getAccessToken, getApiBaseUrl } from '@/lib/supabase';
 
@@ -20,42 +19,10 @@ export default function Settings() {
   const [showKey, setShowKey] = useState(false);
   const [orgName, setOrgName] = useState(activeOrg?.name ?? '');
   const [savingOrg, setSavingOrg] = useState(false);
-  const [members, setMembers] = useState<OrganizationMemberDto[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
 
   useEffect(() => {
     setOrgName(activeOrg?.name ?? '');
   }, [activeOrg?.id, activeOrg?.name]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadMembers() {
-      if (!activeOrg) {
-        setMembers([]);
-        return;
-      }
-      setMembersLoading(true);
-      try {
-        const token = await getAccessToken();
-        if (!token) return;
-        const client = createOrganizationsClient(getApiBaseUrl());
-        const result = await client.listMembers(token, activeOrg.id);
-        if (!cancelled) setMembers(result.members);
-      } catch (error) {
-        if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : 'Failed to load members');
-        }
-      } finally {
-        if (!cancelled) setMembersLoading(false);
-      }
-    }
-
-    void loadMembers();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeOrg?.id]);
 
   async function saveOrganization() {
     if (!activeOrg) return;
@@ -66,26 +33,26 @@ export default function Settings() {
       const client = createOrganizationsClient(getApiBaseUrl());
       await client.update(token, activeOrg.id, { name: orgName.trim() });
       await refresh();
-      toast.success('Organization updated');
+      toast.success('Company updated');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update organization');
+      toast.error(error instanceof Error ? error.message : 'Failed to update company');
     } finally {
       setSavingOrg(false);
     }
   }
 
-  const canManageOrg = activeOrg?.role === 'owner' || activeOrg?.role === 'admin';
+  const canManageOrg = activeOrg?.role === 'owner';
 
   return (
     <>
       <TopHeader breadcrumb={<span className="text-foreground">Settings</span>} />
       <div className="mx-auto max-w-[1080px] px-6 py-8 space-y-6">
-        <PageHeader title="Settings" description="Preferences that apply to this workspace." />
+        <PageHeader title="Settings" description="Preferences for your company account." />
 
         <Tabs defaultValue="general">
           <TabsList className="bg-surface-muted h-9">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="organization">Organization</TabsTrigger>
+            <TabsTrigger value="company">Company</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="developer">Developer</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -105,15 +72,15 @@ export default function Settings() {
             </div>
           </TabsContent>
 
-          <TabsContent value="organization" className="mt-6">
+          <TabsContent value="company" className="mt-6">
             <div className="rounded-xl border border-border bg-surface p-6 max-w-2xl space-y-5">
-              <h2 className="text-base font-semibold text-foreground">Organization</h2>
+              <h2 className="text-base font-semibold text-foreground">Company</h2>
               {!activeOrg ? (
-                <p className="text-sm text-muted-foreground">No active organization.</p>
+                <p className="text-sm text-muted-foreground">No company linked to this account.</p>
               ) : (
                 <>
                   <div>
-                    <Label className="text-sm font-medium">Workspace name</Label>
+                    <Label className="text-sm font-medium">Company name</Label>
                     <Input
                       value={orgName}
                       onChange={(e) => setOrgName(e.target.value)}
@@ -125,10 +92,6 @@ export default function Settings() {
                     <Label className="text-sm font-medium">Slug</Label>
                     <Input value={activeOrg.slug} readOnly className="mt-2 h-10 font-mono" />
                   </div>
-                  <div>
-                    <Label className="text-sm font-medium">Your role</Label>
-                    <Input value={activeOrg.role} readOnly className="mt-2 h-10 capitalize" />
-                  </div>
                   {canManageOrg ? (
                     <div className="flex justify-end">
                       <Button onClick={() => void saveOrganization()} disabled={savingOrg}>
@@ -139,32 +102,6 @@ export default function Settings() {
                 </>
               )}
             </div>
-
-            <div className="rounded-xl border border-border bg-surface p-6 max-w-2xl space-y-4 mt-6">
-              <h2 className="text-base font-semibold text-foreground">Members</h2>
-              {membersLoading ? (
-                <p className="text-sm text-muted-foreground">Loading members…</p>
-              ) : members.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No members found.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {members.map((member) => (
-                    <li
-                      key={member.userId}
-                      className="flex items-center justify-between border-t border-border pt-3 first:border-t-0 first:pt-0"
-                    >
-                      <div>
-                        <div className="text-sm font-medium text-foreground">{member.name}</div>
-                        <div className="text-xs text-muted-foreground">{member.email}</div>
-                      </div>
-                      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {member.role}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </TabsContent>
 
           <TabsContent value="security" className="mt-6">
@@ -172,7 +109,7 @@ export default function Settings() {
               <h2 className="text-base font-semibold text-foreground">Security</h2>
               <Row title="Two-factor authentication" desc="Require a code from your authenticator app." defaultOn />
               <Row title="Single sign-on (SSO)" desc="SAML SSO — Scale plan only." />
-              <Row title="Session timeout" desc="Sign users out after 30 minutes of inactivity." defaultOn />
+              <Row title="Session timeout" desc="Sign out after 30 minutes of inactivity." defaultOn />
             </div>
           </TabsContent>
 

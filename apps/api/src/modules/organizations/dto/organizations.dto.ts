@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateOrganizationDto {
   @IsString()
@@ -13,18 +13,4 @@ export class UpdateOrganizationDto {
   @MinLength(1)
   @MaxLength(100)
   name?: string;
-}
-
-export class AddOrganizationMemberDto {
-  @IsEmail()
-  email!: string;
-
-  @IsOptional()
-  @IsIn(['admin', 'member'])
-  role?: 'admin' | 'member';
-}
-
-export class UpdateOrganizationMemberDto {
-  @IsIn(['admin', 'member'])
-  role!: 'admin' | 'member';
 }
