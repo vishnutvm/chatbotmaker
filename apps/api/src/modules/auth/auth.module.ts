@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { UsersModule } from '../users/users.module';
@@ -12,7 +12,7 @@ import { SupabaseIdentityStrategy } from './strategies/supabase-identity.strateg
 import { SupabaseJwtStrategy } from './strategies/supabase-jwt.strategy';
 
 @Module({
-  imports: [UsersModule, OrganizationsModule, PassportModule],
+  imports: [UsersModule, forwardRef(() => OrganizationsModule), PassportModule],
   controllers: [AuthController],
   providers: [
     AuthService,

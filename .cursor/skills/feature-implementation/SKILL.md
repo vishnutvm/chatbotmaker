@@ -7,6 +7,8 @@ description: Master feature implementation playbook for Genie. Use for every fea
 
 Use with `development-lifecycle` skill. **Do not skip steps.**
 
+For **minimal-interruption full delivery** (build/ship/auto), prefer `autonomous-delivery-loop` + `delivery-orchestrator` — still run every phase below, but only escalate on that skill's gates.
+
 ## Phase 0 — Align (human PO + AI)
 
 - Confirm sprint goal or feature scope with Product Owner intent

@@ -7,6 +7,11 @@ alwaysApply: true
 
 Every feature must include tests appropriate to its scope.
 
+## Closed-loop default (Genie)
+
+- **Every feature/fix:** automatically add/run blast-radius unit + integration + FE/BE E2E, then review the change, fix, and re-test before ship.
+- **App-wide 100% coverage + full E2E suite:** only after the feature is completely Done **and** the human PO confirms (`autonomous-delivery-loop` Layer B). Do not start that campaign unprompted.
+
 ## Unit Tests
 
 Cover:
@@ -26,7 +31,7 @@ Cover:
 
 ## End-to-End Tests
 
-Cover real user workflows:
+Cover real user workflows (Playwright in `apps/e2e` + API e2e under `apps/api/test`):
 
 - Browser flows (dashboard, marketing where applicable)
 - **Authentication** (login, logout, protected routes)

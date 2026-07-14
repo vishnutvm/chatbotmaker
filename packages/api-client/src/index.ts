@@ -1,5 +1,9 @@
 export { GenieApiClient } from './client';
 export { GenieAuthClient } from './auth';
+export {
+  GenieOrganizationsClient,
+  createOrganizationsClient,
+} from './organizations';
 export { createAssistantsClient, type AssistantsClient } from './assistants';
 export { createConversationsClient, type ConversationsClient } from './conversations';
 

@@ -9,7 +9,10 @@ Cursor operates as a **full AI engineering company**. The human is **Product Own
 ├── notion.json     # Notion workspace IDs
 ├── rules/          # 20 rules (always-on + file-scoped)
 ├── agents/         # 14 specialist subagents
-└── skills/         # 9 playbooks
+├── hooks.json      # Closed-loop stop / subagentStop follow-ups
+├── hooks/          # Node hook scripts
+├── state/          # Active autonomous-delivery run marker
+└── skills/         # 10 playbooks
 docs/               # Living knowledge base + ADRs
 Docs/               # Product docs (canonical)
 AGENTS.md           # Orchestration index
@@ -21,6 +24,8 @@ AGENTS.md           # Orchestration index
 Human (Product Owner + CTO)
          │
       AI CTO (lead rules + AGENTS.md)
+         │
+    delivery-orchestrator  ← closed-loop when you say build/ship/auto
          │
     ┌────┼────┬────────────┐
     ▼    ▼    ▼            ▼
@@ -58,10 +63,11 @@ Product → Roadmap → Sprint → Architecture → Tasks (Notion)
 | `notion-tracking.mdc` | Notion task sync |
 | + architecture, security, performance, cost, testing, docs, phases |
 
-## Subagents (14)
+## Subagents (15)
 
 | Agent | Role |
 |-------|------|
+| `delivery-orchestrator` | Closed-loop: route → verify → fix → ship |
 | `product-owner` | Requirements, acceptance criteria |
 | `project-manager` | Sprints, Notion, roadmap |
 | `solution-architect` | Design, ADRs |
@@ -69,7 +75,7 @@ Product → Roadmap → Sprint → Architecture → Tasks (Notion)
 | `backend-engineer` | NestJS |
 | `frontend-engineer` | Next.js |
 | `ai-rag-engineer` | LLM, RAG |
-| `database-engineer` | MongoDB |
+| `database-engineer` | MongoDB / Postgres |
 | `devops-engineer` | CI/CD, infra |
 | `qa-engineer` | Tests |
 | `security-engineer` | Security audit (read-only) |
@@ -77,10 +83,11 @@ Product → Roadmap → Sprint → Architecture → Tasks (Notion)
 | `code-reviewer` | Pre-merge review (read-only) |
 | `documentation-engineer` | Docs + ADRs |
 
-## Skills (9)
+## Skills (10)
 
 | Skill | Use |
 |-------|-----|
+| `autonomous-delivery-loop` | Closed-loop build → test → review → push → Done |
 | `development-lifecycle` | Full feature pipeline |
 | `sprint-planning` | Sprint goals and deliverables |
 | `feature-implementation` | Master playbook |
@@ -88,6 +95,16 @@ Product → Roadmap → Sprint → Architecture → Tasks (Notion)
 | `continuous-refactoring` | Every 5–10 features |
 | `notion-progress-tracking` | Notion sync |
 | `new-module` / `new-api-endpoint` / `database-migration` / `ui-feature` | Specialized tasks |
+
+## Closed-loop usage
+
+Say: **"build X and finish"** / **"ship this"** / **"auto deliver X"**.
+
+AI activates state + orchestrator, runs specialists (parallel when safe), **always tests + reviews the change**, fixes, commits/pushes/PR, Notion Done — and only pings you on escalate gates.
+
+After Done: asks once about Layer B coverage; then **auto-hands off to the next roadmap phase/task agents** (you are not asked "what's next?").
+
+Pause continuum with **"stop"** / **"pause"** / **"no run now"**.
 
 ## Notion
 
