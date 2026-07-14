@@ -1,6 +1,6 @@
 # Database Design
 
-**Last Updated:** 2026-07-07  
+**Last Updated:** 2026-07-14  
 **Database:** Supabase PostgreSQL  
 **ORM:** Prisma
 
@@ -79,11 +79,64 @@
 
 ---
 
-## Phase 3+ — Logical Design (Not Yet Implemented)
+### organization_invitations (Phase 3)
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | uuid | PK |
+| organization_id | uuid | FK → organizations.id, ON DELETE CASCADE |
+| email | text | NOT NULL |
+| role | enum | `admin` \| `member` (default `member`; never `owner` via invite) |
+| token | text | UNIQUE, NOT NULL |
+| invited_by_id | uuid | FK → users.id, ON DELETE CASCADE |
+| status | enum | `pending` \| `accepted` \| `revoked` \| `expired` |
+| expires_at | timestamptz | NOT NULL |
+| created_at | timestamptz | NOT NULL |
+| updated_at | timestamptz | NOT NULL |
+
+**Purpose:** Email invitations for users not yet onboarded (or not yet added). Accept path matches JWT email to `email`.
+
+**Indexes:** UNIQUE `token`; INDEX `(organization_id, status)`; INDEX `email`
+
+**Query patterns:** Lookup by token on accept; list pending by org; conflict check pending by org + email.
+
+---
+
+## Phase 4 — Implemented Tables
+
+### ai_usage_events
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | uuid | PK, default gen_random_uuid() |
+| organization_id | uuid | FK → organizations.id, ON DELETE CASCADE, NOT NULL |
+| user_id | uuid | FK → users.id, ON DELETE SET NULL, nullable |
+| provider | text | NOT NULL (e.g. `openai`) |
+| model | text | NOT NULL |
+| operation | text | NOT NULL (`chat` \| `chat_stream`) |
+| prompt_tokens | int | nullable |
+| completion_tokens | int | nullable |
+| total_tokens | int | nullable |
+| latency_ms | int | nullable |
+| status | text | NOT NULL (`success` \| `error`) |
+| error_code | text | nullable |
+| created_at | timestamptz | NOT NULL, default now() |
+
+**Purpose:** Append-only AI usage telemetry for cost/usage tracking per organization (Phase 4 AI Platform Core). No `updated_at` — events are immutable.
+
+**Indexes:** INDEX `(organization_id, created_at)`; INDEX `(user_id, created_at)`
+
+**Query patterns:** List/aggregate usage by org within a time range; optional per-user breakdown; billing/analytics rollups by `provider`/`model`/`operation`/`status`.
+
+**Migration:** `20260714140000_ai_usage_events`
+
+---
+
+## Phase 4+ — Logical Design (Not Yet Implemented)
 
 ### workspaces
 
-Organization sub-tenants for project isolation.
+Organization sub-tenants for project isolation (deferred; org is the only tenant today).
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -175,6 +228,7 @@ Migration SQL for pgvector in `apps/api/prisma/migrations/`.
 | users | 10K |
 | organizations | 5K |
 | organization_members | 15K |
+| ai_usage_events | 2M (Phase 4+) |
 | document_chunks | 500K (Phase 5+) |
 | messages | 1M (Phase 4+) |
 

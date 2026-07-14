@@ -7,5 +7,5 @@ export function slugifyOrganizationName(name: string): string {
     .replace(/^-|-$/g, '')
     .slice(0, 40);
   const suffix = randomBytes(3).toString('hex');
-  return `${base || 'workspace'}-${suffix}`;
+  return `${base || 'company'}-${suffix}`;
 }

@@ -1,0 +1,55 @@
+# Optional Vercel production deploy from `dev` via CLI.
+# Primary path: Vercel Git integration with Production Branch = `dev`.
+#
+# Enable: set repo variable ENABLE_VERCEL_GHA_DEPLOY=true and secret VERCEL_TOKEN.
+# Optional vars: VERCEL_ORG_ID, VERCEL_PROJECT_ID
+
+name: Deploy Web
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'apps/web/**'
+      - 'packages/types/**'
+      - 'packages/api-client/**'
+      - 'packages/config/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: vars.ENABLE_VERCEL_GHA_DEPLOY == 'true'
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel project metadata
+        working-directory: apps/web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build
+        working-directory: .
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy to production
+        working-directory: .
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

@@ -73,6 +73,26 @@ export function getCorsOrigins(): string[] {
   return raw.split(',').map((o) => o.trim()).filter(Boolean);
 }
 
+/** Public web app origin for invite links (falls back to first CORS origin). */
+export function getWebAppOrigin(): string {
+  const explicit = process.env.WEB_APP_URL?.trim() || process.env.APP_WEB_URL?.trim();
+  if (explicit) {
+    return explicit.replace(/\/$/, '');
+  }
+  return getCorsOrigins()[0] ?? 'http://localhost:3000';
+}
+
+/** OpenAI API key — undefined when unset (chat endpoints return 503). */
+export function getOpenAiApiKey(): string | undefined {
+  const value = process.env.OPENAI_API_KEY?.trim();
+  return value || undefined;
+}
+
+/** Server-enforced chat model; clients cannot override. */
+export function getAiDefaultModel(): string {
+  return process.env.AI_DEFAULT_MODEL?.trim() || 'gpt-4o-mini';
+}
+
 /** Redact password from Postgres URLs for safe logging. */
 export function redactPostgresUrl(url: string | undefined): string {
   if (!url?.trim()) {
@@ -115,6 +135,7 @@ export type StartupEnvSnapshot = {
   databaseUrl: string;
   directUrl: string;
   corsOrigins: string[];
+  aiDefaultModel: string;
   secrets: {
     supabaseJwtSecret: 'set' | 'default-dev-fallback' | 'unset';
     supabaseServiceRoleKey: 'set' | 'unset';
@@ -136,6 +157,7 @@ export function buildStartupEnvSnapshot(): StartupEnvSnapshot {
     databaseUrl: redactPostgresUrl(process.env.DATABASE_URL),
     directUrl: redactPostgresUrl(process.env.DIRECT_URL),
     corsOrigins: getCorsOrigins(),
+    aiDefaultModel: getAiDefaultModel(),
     secrets: {
       supabaseJwtSecret: jwtSecret?.trim()
         ? 'set'

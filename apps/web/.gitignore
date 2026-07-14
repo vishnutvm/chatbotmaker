@@ -1,0 +1,3 @@
+﻿# Local Vercel / env (never commit)
+.vercel
+.env*.local

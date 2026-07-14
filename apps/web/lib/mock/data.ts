@@ -145,24 +145,6 @@ export const unansweredQuestions = [
   "Does the SDK support React Native?",
 ];
 
-export const integrations = [
-  { id: "slack", name: "Slack", description: "Talk to your assistant from any Slack channel.", category: "Communication", connected: true },
-  { id: "zapier", name: "Zapier", description: "Trigger 6,000+ apps from AI actions.", category: "Automation", connected: false },
-  { id: "webhooks", name: "Webhooks", description: "Send conversation events to your endpoints.", category: "Developer Tools", connected: true },
-  { id: "hubspot", name: "HubSpot", description: "Sync leads and conversations with your CRM.", category: "CRM", connected: false },
-  { id: "salesforce", name: "Salesforce", description: "Push qualified leads into Salesforce.", category: "CRM", connected: false },
-  { id: "intercom", name: "Intercom", description: "Hand off to a human when the assistant can't help.", category: "Communication", connected: false },
-  { id: "notion", name: "Notion", description: "Import Notion pages as knowledge sources.", category: "Popular", connected: false },
-  { id: "custom-api", name: "Custom API", description: "Connect any REST API as an AI action.", category: "Developer Tools", connected: true },
-];
-
-export const teamMembers = [
-  { id: "u1", name: "Sarah Chen", email: "sarah@acme.com", role: "Owner", initials: "SC" },
-  { id: "u2", name: "Marcus Lee", email: "marcus@acme.com", role: "Admin", initials: "ML" },
-  { id: "u3", name: "Priya Sharma", email: "priya@acme.com", role: "Member", initials: "PS" },
-  { id: "u4", name: "David Osei", email: "david@acme.com", role: "Viewer", initials: "DO" },
-];
-
 export const purposes = [
   { id: "support", title: "Customer Support", description: "Answer questions about your product and reduce ticket volume.", icon: "LifeBuoy" },
   { id: "sales", title: "Sales Assistant", description: "Qualify leads, answer pricing questions and book demos.", icon: "TrendingUp" },

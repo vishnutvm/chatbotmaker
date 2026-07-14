@@ -13,13 +13,11 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  Plug,
   Settings,
   X,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { Separator } from './ui/separator';
 
 const PRIMARY_NAV = [
   { href: '/', label: 'Home', icon: Home },
@@ -27,8 +25,6 @@ const PRIMARY_NAV = [
   { href: '/conversations', label: 'Conversations', icon: MessageSquare },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
 ] as const;
-
-const SECONDARY_NAV = [{ href: '/integrations', label: 'Integrations', icon: Plug }] as const;
 
 const BOTTOM_NAV = [
   { href: '/help', label: 'Help', icon: HelpCircle },
@@ -50,7 +46,7 @@ export function DashboardShell({
   children,
   userName = 'User',
   userEmail,
-  orgName = 'My Workspace',
+  orgName = 'My Company',
   orgs = [],
   onLogout,
   header,
@@ -101,10 +97,6 @@ export function DashboardShell({
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Main navigation">
         {PRIMARY_NAV.map((item) => (
-          <NavItem key={item.href} item={item} active={isActive(item.href)} collapsed={collapsed} />
-        ))}
-        <Separator className="my-3" />
-        {SECONDARY_NAV.map((item) => (
           <NavItem key={item.href} item={item} active={isActive(item.href)} collapsed={collapsed} />
         ))}
       </nav>

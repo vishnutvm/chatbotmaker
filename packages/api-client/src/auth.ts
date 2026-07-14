@@ -13,6 +13,14 @@ export class GenieAuthClient extends GenieApiClient {
     return this.getJson<MeResponse>('/api/v1/auth/me', accessToken);
   }
 
+  async updateProfile(accessToken: string, body: { name: string }): Promise<MeResponse> {
+    return this.patchJson<MeResponse>('/api/v1/auth/me', body, accessToken);
+  }
+
+  async deleteAccount(accessToken: string): Promise<void> {
+    await this.deleteRequest('/api/v1/auth/me', accessToken);
+  }
+
   async session(accessToken: string): Promise<{ onboarded: boolean } & Partial<MeResponse>> {
     return this.getJson<{ onboarded: boolean } & Partial<MeResponse>>(
       '/api/v1/auth/session',

@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser, OptionalCurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupabaseIdentityParam } from '../../common/decorators/supabase-identity.decorator';
 import type { AuthenticatedUser, SupabaseIdentity } from '../../common/types/jwt-payload';
 import { AuthService } from './auth.service';
-import { OnboardDto } from './dto/auth.dto';
+import { OnboardDto, UpdateProfileDto } from './dto/auth.dto';
 import { SupabaseIdentityGuard } from './guards/supabase-identity.guard';
 import { SupabaseJwtGuard } from './guards/supabase-jwt.guard';
 import { OptionalSupabaseJwtGuard } from './guards/optional-supabase-jwt.guard';
@@ -24,18 +24,42 @@ export class AuthController {
     return this.authService.getMe(user.userId);
   }
 
+  @Patch('me')
+  @UseGuards(SupabaseJwtGuard)
+  updateProfile(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(user.userId, dto);
+  }
+
+  @Delete('me')
+  @HttpCode(204)
+  @UseGuards(SupabaseJwtGuard)
+  async deleteAccount(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.authService.deleteAccount(user.userId);
+  }
+
   /** Validates token and returns whether the user has completed onboarding */
   @Get('session')
   @UseGuards(OptionalSupabaseJwtGuard)
   async session(@OptionalCurrentUser() user: AuthenticatedUser | null) {
-    if (!user) {
+    // Empty userId means JWT is valid but Nest user row does not exist yet.
+    if (!user?.userId) {
       return { onboarded: false };
     }
     try {
       const me = await this.authService.getMe(user.userId);
       return { onboarded: true, ...me };
     } catch {
-      return { onboarded: false };
+      // App user exists — never report onboarded:false for an existing row
+      // (avoids trapping users on a dead "confirm name" page after transient DB errors).
+      return {
+        onboarded: true,
+        user: {
+          id: user.userId,
+          email: user.email,
+          name: '',
+        },
+        organizations: [],
+      };
     }
   }
 }

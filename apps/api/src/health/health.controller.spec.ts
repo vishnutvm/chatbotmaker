@@ -20,4 +20,11 @@ describe('HealthController', () => {
     expect(result.service).toBe('genie-api');
     expect(result.timestamp).toBeDefined();
   });
+
+  it('returns version payload', () => {
+    const result = controller.getVersion();
+    expect(result.service).toBe('genie-api');
+    expect(result.gitShaShort).toBeDefined();
+    expect(result.timestamp).toBeDefined();
+  });
 });

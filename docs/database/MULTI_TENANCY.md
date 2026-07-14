@@ -1,22 +1,28 @@
 # Multi-Tenancy
 
-**Last Updated:** 2026-07-07
+**Last Updated:** 2026-07-14
 
 ---
 
 ## Model
 
-Genie uses **organization-based multi-tenancy** with optional workspace sub-tenancy (Phase 3+).
+Genie uses **organization-based multi-tenancy**. The tenant boundary is a company (`organizations`). Users attach via `organization_members` (and optionally pending `organization_invitations`). Nested **workspaces are not shipped** — keep them out of application paths until a later phase.
 
 ```text
-Organization (tenant)
-  ├── Members (users with roles)
-  ├── Workspaces (future)
-  │     ├── Assistants
-  │     ├── Knowledge Bases
-  │     └── Conversations
-  └── Billing / Usage
+Organization (tenant / company)
+  ├── Members (users + roles: owner | admin | member)
+  ├── Invitations (pending email invites)
+  ├── Billing / Usage (future)
+  └── Tenant-owned resources (assistants, knowledge, … — later phases)
 ```
+
+**Product rules (Phase 3):**
+
+- One account may belong to **many companies**
+- One company may have **many members**
+- Onboard provisions a default company owned by the user; Team invites add further members or memberships across companies
+
+See [`docs/features/ORGANIZATIONS.md`](../features/ORGANIZATIONS.md).
 
 ---
 
@@ -25,7 +31,19 @@ Organization (tenant)
 | Scope | Column | Required On |
 |-------|--------|-------------|
 | Organization | `organization_id` | All tenant-owned entities |
-| Workspace | `workspace_id` | Workspace-scoped entities |
+| Workspace | `workspace_id` | **Future** — do not add until workspaces ship |
+
+---
+
+## Schema (tenant core)
+
+| Table | Role |
+|-------|------|
+| `organizations` | Tenant root (`id`, `slug`, `owner_id`, `plan`) |
+| `organization_members` | User ↔ org + `role`; unique `(user_id, organization_id)` |
+| `organization_invitations` | Pending invite by email + opaque `token`; status `pending` / `accepted` / `revoked` / `expired` |
+
+Indexes of note: `organization_members(user_id)`, `organization_members(organization_id)`, `organization_invitations(organization_id, status)`, `organization_invitations(email)`.
 
 ---
 
@@ -34,23 +52,24 @@ Organization (tenant)
 | Layer | Mechanism |
 |-------|-----------|
 | Authentication | Supabase Auth JWT |
-| Authorization | NestJS guards + RBAC checks |
+| Authorization | NestJS guards + membership / RBAC in services |
 | Data access | Repository queries filter by `organization_id` |
-| Database | Foreign keys, unique constraints |
-| Storage | Tenant-prefixed paths |
-| Vector search | Tenant filters in every query |
-| RLS (future) | PostgreSQL Row Level Security policies |
+| Database | FKs, unique membership constraint |
+| Storage | Tenant-prefixed paths (when Storage phase wires up) |
+| Vector search | Tenant filters in every query (Knowledge phase) |
+| RLS (future) | PostgreSQL Row Level Security — not relied on for MVP |
 
 ---
 
 ## Rules
 
 1. **Never trust client-supplied `organization_id`** without verifying membership
-2. **Every read/write** on tenant data must include organization filter
-3. **Signed URLs** only generated after authorization check
-4. **Vector queries** must filter by `organization_id` AND `knowledge_base_id`
+2. **Every read/write** on tenant data must include an organization filter
+3. **Signed URLs** only after authorization
+4. **Vector queries** must filter by `organization_id` (and resource ids when present)
 5. **API keys** scoped to organization (future)
-6. **Audit logs** include `organization_id` and `user_id`
+6. **Audit logs** include `organization_id` and `user_id` (future)
+7. **Invites:** accept only when JWT user email matches invitation email; managers only create/revoke
 
 ---
 
@@ -73,6 +92,8 @@ findById(organizationId: string, id: string) {
 }
 ```
 
+Dashboard **active org** (`localStorage` `genie.activeOrgId`) is UI context only. APIs authorize the org id on each request via membership.
+
 ---
 
 ## IDOR Prevention
@@ -80,7 +101,7 @@ findById(organizationId: string, id: string) {
 - Use UUIDs for all primary keys
 - Never expose sequential IDs
 - Validate resource belongs to authorized organization before any operation
-- Return 404 (not 403) when resource exists but user lacks access (optional policy)
+- Prefer 404 when hiding existence is required; current org APIs use 403 when authenticated but not a member
 
 ---
 
@@ -93,14 +114,11 @@ USER_A (ORG_A) must NEVER access resources of USER_B (ORG_B)
 ```
 
 Test matrix:
-- Organizations
-- Workspaces (future)
-- Assistants (future)
-- Knowledge bases (future)
-- Documents (future)
-- Storage files (future)
-- Conversations (future)
-- Vector search results (future)
+
+- Organizations / members / invitations (Phase 3)
+- Assistants, knowledge bases, documents, storage, conversations, vector results (later phases)
+
+Cross-tenant membership checks belong in API integration / e2e suites as each resource ships.
 
 ---
 

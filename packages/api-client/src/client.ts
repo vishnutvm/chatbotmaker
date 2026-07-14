@@ -1,4 +1,4 @@
-import type { HealthResponse } from '@genie/types';
+import type { HealthResponse, VersionResponse } from '@genie/types';
 
 export class GenieApiClient {
   constructor(private readonly baseUrl: string) {}
@@ -87,5 +87,9 @@ export class GenieApiClient {
 
   async getHealth(): Promise<HealthResponse> {
     return this.getJson<HealthResponse>('/health');
+  }
+
+  async getVersion(): Promise<VersionResponse> {
+    return this.getJson<VersionResponse>('/version');
   }
 }

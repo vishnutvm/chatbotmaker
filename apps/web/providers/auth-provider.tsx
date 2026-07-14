@@ -21,7 +21,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<MeResponse['user'] | null>(null);
   const [organizations, setOrganizations] = useState<MeResponse['organizations']>([]);
-  const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
+  const [activeOrgId, setActiveOrgIdState] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem('genie.activeOrgId');
+  });
+
+  const setActiveOrgId = useCallback((id: string) => {
+    setActiveOrgIdState(id);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('genie.activeOrgId', id);
+    }
+  }, []);
 
   const loadUser = useCallback(async () => {
     const token = await getAccessToken();
@@ -37,8 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const session = await client.session(token);
       if (session.onboarded && session.user) {
         setUser(session.user);
-        setOrganizations(session.organizations ?? []);
-        setActiveOrgId((current) => current ?? session.organizations?.[0]?.id ?? null);
+        const orgs = session.organizations ?? [];
+        setOrganizations(orgs);
+        setActiveOrgIdState((current) => {
+          const stored =
+            typeof window !== 'undefined' ? window.localStorage.getItem('genie.activeOrgId') : null;
+          const preferred = current ?? stored;
+          if (preferred && orgs.some((o) => o.id === preferred)) {
+            return preferred;
+          }
+          const first = orgs[0]?.id ?? null;
+          if (first && typeof window !== 'undefined') {
+            window.localStorage.setItem('genie.activeOrgId', first);
+          }
+          return first;
+        });
       } else {
         setUser(null);
         setOrganizations([]);

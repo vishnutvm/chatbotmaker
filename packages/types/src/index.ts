@@ -6,6 +6,16 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+export interface VersionResponse {
+  service: string;
+  version: string;
+  gitSha: string;
+  gitShaShort: string;
+  environment: string;
+  nodeEnv: string;
+  timestamp: string;
+}
+
 export type { OrganizationRole } from './organization';
 import type { OrganizationRole } from './organization';
 
@@ -37,3 +47,4 @@ export * from './assistant';
 export * from './knowledge';
 export * from './conversation';
 export * from './analytics';
+export * from './ai-chat';

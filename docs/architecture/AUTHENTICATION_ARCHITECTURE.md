@@ -36,24 +36,34 @@ Do not build a duplicate username/password system in NestJS.
 ### Sign Up
 
 ```text
-1. Dashboard: supabase.auth.signUp({ email, password, options: { data: { name } } })
+1. Web: supabase.auth.signUp({ email, password, options: { data: { name } } })
 2. Supabase creates auth.users record
-3. Dashboard: POST /api/v1/auth/onboard
+3. Web: POST /api/v1/auth/onboard
    Headers: Authorization: Bearer <supabase_access_token>
-   Body: { name, organizationName? }
+   Body: { name, email? }  — no company/workspace field in UI
 4. NestJS validates JWT
-5. NestJS creates users + organizations + organization_members (transaction)
-6. Dashboard stores Supabase session
+5. NestJS creates users + organizations + organization_members (owner)
+   Company name defaults to "{name}'s Company" (rename later in Settings)
+6. Web stores Supabase session → /dashboard
 ```
+
+Product rule: accounts may belong to **multiple companies**; Team invites are supported. Onboarding still auto-creates a default company if the user has none.
 
 ### Sign In
 
 ```text
-1. Dashboard: supabase.auth.signInWithPassword({ email, password })
+1. Web: supabase.auth.signInWithPassword({ email, password })
 2. Supabase returns session (access_token, refresh_token)
-3. Dashboard stores session
-4. Dashboard: GET /api/v1/auth/me (Bearer access_token)
-5. NestJS validates JWT, returns user + organizations
+3. Web: GET /api/v1/auth/session — if not onboarded, auto-onboard from Google/profile name when possible, else /signup?onboard=1 (name only)
+4. Else → /dashboard
+```
+
+### Google OAuth
+
+```text
+1. Web: supabase.auth.signInWithOAuth({ provider: 'google' })
+2. /auth/callback exchanges code → session
+3. GET /api/v1/auth/session → auto-onboard when display name available → /dashboard
 ```
 
 ### Token Refresh
@@ -107,8 +117,12 @@ On first API call after signup, if no application user exists, client must call 
 |--------|------|------|-------------|
 | POST | `/api/v1/auth/onboard` | Supabase JWT | Create app user + organization |
 | GET | `/api/v1/auth/me` | Supabase JWT | Current user + organizations |
+| PATCH | `/api/v1/auth/me` | Supabase JWT | Update profile name |
+| DELETE | `/api/v1/auth/me` | Supabase JWT | Delete app user + company + Supabase auth identity |
 
 Removed: `/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout` (handled by Supabase client).
+
+Password reset and change-password for email accounts are handled by the Supabase client (`resetPasswordForEmail` / `updateUser`), not NestJS.
 
 ---
 

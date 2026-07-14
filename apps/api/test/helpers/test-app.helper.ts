@@ -10,7 +10,7 @@ export async function createTestApp(): Promise<INestApplication> {
   }).compile();
 
   const app = moduleFixture.createNestApplication();
-  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+  app.setGlobalPrefix('api/v1', { exclude: ['health', 'version'] });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -36,6 +36,8 @@ export async function resetDatabase(prisma: PrismaService): Promise<void> {
     );
   }
 
+  await prisma.aiUsageEvent.deleteMany();
+  await prisma.organizationInvitation.deleteMany();
   await prisma.organizationMember.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.user.deleteMany();

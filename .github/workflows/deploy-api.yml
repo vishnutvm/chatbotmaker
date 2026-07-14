@@ -2,7 +2,7 @@ name: Deploy API
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
     paths:
       - 'apps/api/**'
       - 'packages/types/**'
@@ -11,6 +11,7 @@ on:
       - 'railway.toml'
       - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
 
 concurrency:
   group: deploy-api-${{ github.ref }}
@@ -19,8 +20,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Enable: set repo variable ENABLE_RAILWAY_GHA_DEPLOY=true and secret RAILWAY_TOKEN.
-    # Alternative: Railway native GitHub auto-deploy (recommended for MVP).
+    # Primary path: Mirror → Railway GitHub auto-deploy (see mirror-deploy-repo.yml).
+    # Optional direct deploy: set ENABLE_RAILWAY_GHA_DEPLOY=true + RAILWAY_TOKEN
+    # and RAILWAY_PROJECT_ID=cc493562-28cd-4b94-b4d7-d1afce1dba24 (genie-api).
     if: vars.ENABLE_RAILWAY_GHA_DEPLOY == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -31,4 +33,7 @@ jobs:
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service "${{ vars.RAILWAY_SERVICE_NAME || 'api' }}" --detach
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID || 'cc493562-28cd-4b94-b4d7-d1afce1dba24' }}
+        run: |
+          railway link --project "$RAILWAY_PROJECT_ID" --environment production --service "${{ vars.RAILWAY_SERVICE_NAME || 'genie-api' }}"
+          railway up --service "${{ vars.RAILWAY_SERVICE_NAME || 'genie-api' }}" --detach
