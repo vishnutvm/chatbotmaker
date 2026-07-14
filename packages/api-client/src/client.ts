@@ -41,7 +41,16 @@ export class GenieApiClient {
       throw new Error(message);
     }
 
-    return response.json() as Promise<T>;
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const text = await response.text();
+    if (!text) {
+      return undefined as T;
+    }
+
+    return JSON.parse(text) as T;
   }
 
   protected async postJson<T>(path: string, body: unknown, accessToken?: string): Promise<T> {
@@ -58,6 +67,22 @@ export class GenieApiClient {
 
   protected async getJson<T>(path: string, accessToken?: string): Promise<T> {
     return this.requestJson<T>(path, { method: 'GET' }, accessToken);
+  }
+
+  protected async patchJson<T>(path: string, body: unknown, accessToken?: string): Promise<T> {
+    return this.requestJson<T>(
+      path,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      accessToken,
+    );
+  }
+
+  protected async deleteRequest(path: string, accessToken?: string): Promise<void> {
+    await this.requestJson<unknown>(path, { method: 'DELETE' }, accessToken);
   }
 
   async getHealth(): Promise<HealthResponse> {

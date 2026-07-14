@@ -39,6 +39,19 @@ Product (docs repo) → Roadmap → Sprint → Architecture + review gates → N
 
 See `development-lifecycle` skill and `definition-of-done.mdc`.
 
+## Closed-loop (minimal interruption)
+
+When you say **build / ship / auto-deliver**, use:
+
+- Skill: `autonomous-delivery-loop`
+- Agent: `delivery-orchestrator`
+- Rule: `autonomous-delivery.mdc`
+- Hooks: `.cursor/hooks.json` (auto-continue after specialists / unfinished turns)
+
+You are only interrupted on escalate gates. Git commit/push/PR is authorized while that mode is active.
+
+After each feature/fix: auto test + review the change. After Done: AI asks before any app-wide **100% coverage + full FE+BE E2E** campaign — reply **yes** only when you want that.
+
 ## Architecture (non-negotiable)
 
 Monorepo · NestJS API · thin controllers · tenant isolation

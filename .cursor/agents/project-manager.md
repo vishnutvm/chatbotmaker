@@ -31,6 +31,15 @@ When scoping work:
 
 Use Notion MCP (`plugin-notion-workspace-notion`) for all task operations.
 
+## Roadmap continuum (closed-loop)
+
+When prior work just reached Done and continuum is enabled:
+
+1. Do **not** ask the human what is next
+2. Query Genie Phases + Tasks; pick the next incomplete unit in phase order
+3. Set it In progress, hand off to `delivery-orchestrator` / specialists
+4. If next step would skip a phase → escalate (that is a gate)
+
 ## Output Format
 
 1. **Phase & roadmap alignment**

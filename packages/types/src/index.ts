@@ -6,7 +6,8 @@ export interface HealthResponse {
   timestamp: string;
 }
 
-export type OrganizationRole = 'owner' | 'admin' | 'member';
+export type { OrganizationRole } from './organization';
+import type { OrganizationRole } from './organization';
 
 export interface AuthUser {
   id: string;
@@ -31,6 +32,7 @@ export interface MeResponse {
   organizations: AuthOrganization[];
 }
 
+export * from './organization';
 export * from './assistant';
 export * from './knowledge';
 export * from './conversation';
