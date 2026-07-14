@@ -11,6 +11,11 @@ import { mapAuthError } from '@/lib/auth-flow';
 import { getApiBaseUrl, getSession, supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 
+/**
+ * Signup / finish-onboard UI.
+ * One account → one company. Company name is created automatically from the
+ * user's name on the API (`{name}'s Company`). Rename later in Settings.
+ */
 export function SignupForm() {
   const router = useRouter();
   const { refresh } = useAuth();
@@ -20,7 +25,6 @@ export function SignupForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [organizationName, setOrganizationName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,12 +42,11 @@ export function SignupForm() {
     });
   }, [onboardOnly, router]);
 
-  async function completeOnboard(accessToken: string, userEmail: string) {
+  async function completeOnboard(accessToken: string, userEmail: string, displayName: string) {
     const client = createAuthClient(getApiBaseUrl());
     await client.onboard(accessToken, {
-      name,
+      name: displayName.trim(),
       email: userEmail,
-      organizationName: organizationName || undefined,
     });
     await refresh();
     router.replace('/dashboard');
@@ -58,7 +61,7 @@ export function SignupForm() {
       if (onboardOnly) {
         const session = await getSession();
         if (!session) throw new Error('No session');
-        await completeOnboard(session.access_token, session.user.email ?? email);
+        await completeOnboard(session.access_token, session.user.email ?? email, name);
         return;
       }
 
@@ -75,7 +78,7 @@ export function SignupForm() {
       }
       if (!data.session) throw new Error('Sign up failed');
 
-      await completeOnboard(data.session.access_token, email);
+      await completeOnboard(data.session.access_token, email, name);
     } catch (err) {
       setError(mapAuthError(err, 'Could not create account. Email may already be in use.'));
     } finally {
@@ -85,10 +88,10 @@ export function SignupForm() {
 
   return (
     <AuthShell
-      title={onboardOnly ? 'Complete your company setup' : 'Create your account'}
+      title={onboardOnly ? 'Finish setting up your account' : 'Create your account'}
       subtitle={
         onboardOnly
-          ? 'Tell us a bit about your company to finish setup.'
+          ? 'Confirm your name to start using Genie.'
           : 'Sign up with Google or create an email account.'
       }
       footer={
@@ -107,9 +110,17 @@ export function SignupForm() {
       <form onSubmit={onSubmit} className="space-y-4" data-testid="signup-form">
         <div>
           <label className="mb-1.5 block text-sm font-medium" htmlFor="name">
-            Name
+            Your name
           </label>
-          <Input id="name" data-testid="signup-name" required value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
+          <Input
+            id="name"
+            data-testid="signup-name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-11"
+            autoComplete="name"
+          />
         </div>
         {!onboardOnly ? (
           <>
@@ -117,26 +128,39 @@ export function SignupForm() {
               <label className="mb-1.5 block text-sm font-medium" htmlFor="email">
                 Email
               </label>
-              <Input id="email" data-testid="signup-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11" />
+              <Input
+                id="email"
+                data-testid="signup-email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-11"
+              />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium" htmlFor="password">
                 Password
               </label>
-              <Input id="password" data-testid="signup-password" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
+              <Input
+                id="password"
+                data-testid="signup-password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-11"
+              />
             </div>
           </>
         ) : null}
-        <div>
-          <label className="mb-1.5 block text-sm font-medium" htmlFor="org">
-            Company name (optional)
-          </label>
-          <Input id="org" data-testid="signup-org" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} className="h-11" />
-        </div>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {success ? <p className="text-sm text-success">{success}</p> : null}
         <Button type="submit" data-testid="signup-submit" disabled={loading} className="w-full h-11">
-          {loading ? 'Creating…' : onboardOnly ? 'Complete setup' : 'Create account with email'}
+          {loading ? 'Working…' : onboardOnly ? 'Continue to dashboard' : 'Create account with email'}
         </Button>
       </form>
     </AuthShell>

@@ -13,13 +13,12 @@ test.describe('Auth UI full flow (Supabase)', () => {
     const email = `e2e+${unique}@example.com`;
     const password = `E2eTest!${unique}`;
     const name = 'E2E User';
-    const company = `E2E Company ${unique}`;
 
     await page.goto('/signup');
     await page.getByTestId('signup-name').fill(name);
     await page.getByTestId('signup-email').fill(email);
     await page.getByTestId('signup-password').fill(password);
-    await page.getByTestId('signup-org').fill(company);
+    await expect(page.getByTestId('signup-org')).toHaveCount(0);
     await page.getByTestId('signup-submit').click();
 
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 45_000 });

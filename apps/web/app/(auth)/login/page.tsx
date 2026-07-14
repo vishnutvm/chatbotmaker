@@ -35,7 +35,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Sign in to Genie"
-      subtitle="Manage your AI assistants"
+      subtitle="Access your AI assistants"
       footer={
         <>
           No account? <AuthLink href="/signup">Create account</AuthLink>
