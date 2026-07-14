@@ -39,6 +39,8 @@ RUN cd apps/api && npx --yes prisma@6.19.3 generate
 FROM node:22-alpine AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 WORKDIR /app
+ARG GIT_COMMIT_SHA=unknown
+ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 ENV NODE_ENV=production
 
 COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
