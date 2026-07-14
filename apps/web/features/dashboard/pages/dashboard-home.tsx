@@ -6,12 +6,13 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { MetricCard } from "@/components/common/MetricCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { conversations, analyticsSeries } from "@/lib/mock/data";
+import { analyticsSeries } from "@/lib/mock/data";
 import { useAssistants } from "@/lib/store";
 import { useAuth } from '@/providers/auth-provider';
 import { greetingForName } from '@/lib/identity';
 import {
   ArrowRight,
+  Bot,
   Plus,
   BookOpen,
   MessageSquarePlus,
