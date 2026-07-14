@@ -76,7 +76,7 @@ export default function TeamPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeOrg?.id, manager]);
+  }, [activeOrg, manager]);
 
   useEffect(() => {
     void load();
