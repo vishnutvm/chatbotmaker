@@ -77,3 +77,16 @@ jobs:
           git remote add mirror "https://github.com/${MIRROR_REPO}.git"
           git push mirror "HEAD:refs/heads/${MIRROR_BRANCH}" --force
           echo "Mirrored ${GITHUB_REF_NAME} -> ${MIRROR_REPO}@${MIRROR_BRANCH}"
+
+      # Railway often marks GitHub pushes SKIPPED while waiting for CI on the mirror
+      # (mirror has no CI). Enable: ENABLE_RAILWAY_GHA_DEPLOY=true + RAILWAY_TOKEN,
+      # or turn off "Wait for CI" on Railway service settings.
+      - name: Redeploy Railway from mirrored source
+        if: vars.ENABLE_RAILWAY_GHA_DEPLOY == 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID || 'cc493562-28cd-4b94-b4d7-d1afce1dba24' }}
+        run: |
+          npm install -g @railway/cli
+          railway link --project "$RAILWAY_PROJECT_ID" --environment production --service genie-api
+          railway redeploy --from-source -y --service genie-api
