@@ -69,14 +69,30 @@ Create project at [supabase.com](https://supabase.com). Enable:
 
 ## CI/CD
 
+**Deploy branch:** `dev` (also `master` / `main` for CI).
+
+```text
+push to `dev` (vishnutvm/chatbotmaker)
+  ├─ CI (.github/workflows/ci.yml)
+  ├─ Frontend → Vercel project `chatbotmaker` (Git auto-deploy)
+  │              Production URL: https://chatbotmaker-dev.vercel.app
+  │              Set Vercel → Settings → Git → Production Branch = `dev`
+  └─ Backend  → Mirror workflow → vishnuMChanthavila/chatbotmaker-deploy@main
+                 → Railway project **genie-api** (cc493562-28cd-4b94-b4d7-d1afce1dba24)
+                 → https://genie-api-production-4bb3.up.railway.app
+```
+
+Do **not** use Railway project `genie-api-production` for this app — wrong project / missing secrets.
+
 `.github/workflows/ci.yml`:
 1. Lint, typecheck, test, build
 2. Docker build with PostgreSQL service container
 3. Health check against container
 
 Deploy triggers:
-- Vercel: auto on push to main
-- Railway: auto on push to main (GitHub integration)
+- **Vercel:** auto on push to `dev` (configure Production Branch = `dev`)
+- **Railway:** push to `dev` → mirror to deploy repo `main` → Railway GitHub auto-deploy
+- Optional GHA direct deploy: `ENABLE_RAILWAY_GHA_DEPLOY` / `VERCEL_TOKEN` (see workflow files)
 
 ---
 

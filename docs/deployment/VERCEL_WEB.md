@@ -6,13 +6,23 @@ Single Vercel project for marketing, auth, and dashboard.
 
 | Setting | Value |
 |---------|--------|
+| **Project** | `chatbotmaker` |
+| **Production URL** | https://chatbotmaker-dev.vercel.app |
+| **Production Branch** | `dev` |
 | **Root Directory** | `apps/web` |
 | **Framework** | Next.js |
-| **Node.js** | 22.x |
+| **Node.js** | 22.x / 24.x |
 | **Install** | `cd ../.. && pnpm install --frozen-lockfile` |
 | **Build** | `cd ../.. && pnpm turbo run build --filter=@genie/web` |
 
 `apps/web/vercel.json` encodes install/build commands for monorepo builds from the app root.
+
+### Set Production Branch to `dev`
+
+Vercel Dashboard → Project **chatbotmaker** → **Settings** → **Git** → **Production Branch** → `dev`.
+
+After that, every push to `dev` on `vishnutvm/chatbotmaker` deploys production frontend.
+
 
 ## Environment variables
 

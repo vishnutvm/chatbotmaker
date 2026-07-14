@@ -1,13 +1,16 @@
-# Mirrors master/main to a second GitHub repo (other account) for Render deploy.
-# Secrets: DEPLOY_MIRROR_TOKEN (PAT from deploy account, Contents read/write on mirror repo)
+# Mirrors source repo → deploy account repo for Railway GitHub auto-deploy.
+# Railway project "genie-api" (cc493562-28cd-4b94-b4d7-d1afce1dba24) watches
+# vishnuMChanthavila/chatbotmaker-deploy@main — do not point Railway at the wrong project.
+#
+# Secrets: DEPLOY_MIRROR_TOKEN (PAT on deploy account, Contents read/write)
 # Variables: DEPLOY_MIRROR_REPO (e.g. vishnuMChanthavila/chatbotmaker-deploy)
-# Optional variable: DEPLOY_MIRROR_BRANCH (default: main)
+# Optional: DEPLOY_MIRROR_BRANCH (default: main — Railway watches this branch)
 
 name: Mirror to deploy repo
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
     paths:
       - 'apps/api/**'
       - 'packages/types/**'
