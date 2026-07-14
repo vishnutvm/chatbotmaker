@@ -20,7 +20,8 @@ Required for login → onboard → dashboard on production.
 | `SUPABASE_URL` | **Required.** `https://rocxcjxaqceqndkymujl.supabase.co` (must match Vercel) |
 | `NODE_ENV` | `production` |
 | `SUPABASE_JWT_SECRET` | Only for local/CI (`http://` Supabase). **Hosted Supabase uses JWKS automatically.** |
-| `DATABASE_URL` | Supabase Postgres connection string |
+| `DATABASE_URL` | Supabase **pooler** URL on port **6543** with `?pgbouncer=true` (required — without it Prisma throws `prepared statement already exists` / onboard 500) |
+| `DIRECT_URL` | Supabase **direct** DB URL on port **5432** (migrations) |
 
 ## Supabase → Authentication → URL Configuration
 
