@@ -28,14 +28,25 @@ export class AuthController {
   @Get('session')
   @UseGuards(OptionalSupabaseJwtGuard)
   async session(@OptionalCurrentUser() user: AuthenticatedUser | null) {
-    if (!user) {
+    // Empty userId means JWT is valid but Nest user row does not exist yet.
+    if (!user?.userId) {
       return { onboarded: false };
     }
     try {
       const me = await this.authService.getMe(user.userId);
       return { onboarded: true, ...me };
     } catch {
-      return { onboarded: false };
+      // App user exists — never report onboarded:false for an existing row
+      // (avoids trapping users on a dead "confirm name" page after transient DB errors).
+      return {
+        onboarded: true,
+        user: {
+          id: user.userId,
+          email: user.email,
+          name: '',
+        },
+        organizations: [],
+      };
     }
   }
 }

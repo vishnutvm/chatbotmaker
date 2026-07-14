@@ -7,20 +7,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AuthDivider, AuthLink, AuthShell } from '@/components/auth/auth-shell';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
-import { mapAuthError } from '@/lib/auth-flow';
+import { ensureOnboarded, mapAuthError, resolveDisplayName } from '@/lib/auth-flow';
 import { getApiBaseUrl, getSession, supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 
 /**
- * Signup / finish-onboard UI.
- * One account → one company. Company name is created automatically from the
- * user's name on the API (`{name}'s Company`). Rename later in Settings.
+ * Email/password + Google signup only.
+ * There is no separate "confirm your name" step after login —
+ * company provisioning is automatic via ensureOnboarded.
  */
 export function SignupForm() {
   const router = useRouter();
   const { refresh } = useAuth();
   const searchParams = useSearchParams();
-  const onboardOnly = searchParams.get('onboard') === '1';
+  const finishOnboard = searchParams.get('onboard') === '1';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,29 +28,36 @@ export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [finishing, setFinishing] = useState(finishOnboard);
 
+  // Legacy /signup?onboard=1 bookmarks: finish silently, never show a name form.
   useEffect(() => {
-    if (!onboardOnly) return;
-    void getSession().then((session) => {
-      if (!session) {
-        router.replace('/login');
-        return;
-      }
-      const metadata = session.user.user_metadata as { name?: string; full_name?: string };
-      setName((current) => current || metadata.name || metadata.full_name || '');
-      setEmail(session.user.email ?? '');
-    });
-  }, [onboardOnly, router]);
+    if (!finishOnboard) return;
 
-  async function completeOnboard(accessToken: string, userEmail: string, displayName: string) {
-    const client = createAuthClient(getApiBaseUrl());
-    await client.onboard(accessToken, {
-      name: displayName.trim(),
-      email: userEmail,
-    });
-    await refresh();
-    router.replace('/dashboard');
-  }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const session = await getSession();
+        if (!session) {
+          router.replace('/login');
+          return;
+        }
+        await ensureOnboarded(session.access_token);
+        await refresh();
+        if (!cancelled) router.replace('/dashboard');
+      } catch (err) {
+        if (!cancelled) {
+          setFinishing(false);
+          setError(mapAuthError(err, 'Could not finish setup. Please sign in again.'));
+          router.replace('/login');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [finishOnboard, refresh, router]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -58,17 +65,10 @@ export function SignupForm() {
     setError(null);
     setSuccess(null);
     try {
-      if (onboardOnly) {
-        const session = await getSession();
-        if (!session) throw new Error('No session');
-        await completeOnboard(session.access_token, session.user.email ?? email, name);
-        return;
-      }
-
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name } },
+        options: { data: { name: name.trim() || resolveDisplayName({ email, user_metadata: { name } }) } },
       });
       if (signUpError) throw signUpError;
 
@@ -78,34 +78,48 @@ export function SignupForm() {
       }
       if (!data.session) throw new Error('Sign up failed');
 
-      await completeOnboard(data.session.access_token, email, name);
+      const client = createAuthClient(getApiBaseUrl());
+      await client.onboard(data.session.access_token, {
+        name: name.trim() || resolveDisplayName(data.user),
+        email,
+      });
+      await refresh();
+      router.replace('/dashboard');
     } catch (err) {
-      setError(mapAuthError(err, 'Could not create account. Email may already be in use.'));
+      const message = mapAuthError(err, 'Could not create account. Email may already be in use.');
+      if (message.includes('already set up') || message.includes('already onboarded')) {
+        router.replace('/login');
+        return;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
   }
 
+  if (finishOnboard || finishing) {
+    return (
+      <AuthShell title="Signing you in" subtitle="Taking you to your dashboard…" footer={<span>Please wait</span>}>
+        <div className="flex justify-center py-8">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+        {error ? <p className="text-sm text-destructive text-center">{error}</p> : null}
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell
-      title={onboardOnly ? 'Finish setting up your account' : 'Create your account'}
-      subtitle={
-        onboardOnly
-          ? 'Confirm your name to start using Genie.'
-          : 'Sign up with Google or create an email account.'
-      }
+      title="Create your account"
+      subtitle="Sign up with Google or create an email account."
       footer={
         <>
           Already have an account? <AuthLink href="/login">Sign in</AuthLink>
         </>
       }
     >
-      {!onboardOnly ? (
-        <>
-          <GoogleSignInButton label="Sign up with Google" testId="google-sign-up" onError={setError} />
-          <AuthDivider />
-        </>
-      ) : null}
+      <GoogleSignInButton label="Sign up with Google" testId="google-sign-up" onError={setError} />
+      <AuthDivider />
 
       <form onSubmit={onSubmit} className="space-y-4" data-testid="signup-form">
         <div>
@@ -122,45 +136,41 @@ export function SignupForm() {
             autoComplete="name"
           />
         </div>
-        {!onboardOnly ? (
-          <>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium" htmlFor="email">
-                Email
-              </label>
-              <Input
-                id="email"
-                data-testid="signup-email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-11"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium" htmlFor="password">
-                Password
-              </label>
-              <Input
-                id="password"
-                data-testid="signup-password"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11"
-              />
-            </div>
-          </>
-        ) : null}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium" htmlFor="email">
+            Email
+          </label>
+          <Input
+            id="email"
+            data-testid="signup-email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium" htmlFor="password">
+            Password
+          </label>
+          <Input
+            id="password"
+            data-testid="signup-password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11"
+          />
+        </div>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {success ? <p className="text-sm text-success">{success}</p> : null}
         <Button type="submit" data-testid="signup-submit" disabled={loading} className="w-full h-11">
-          {loading ? 'Working…' : onboardOnly ? 'Continue to dashboard' : 'Create account with email'}
+          {loading ? 'Working…' : 'Create account with email'}
         </Button>
       </form>
     </AuthShell>

@@ -26,47 +26,70 @@ export async function signInWithGoogle(): Promise<void> {
   }
 }
 
+/** Best-effort display name from Supabase user metadata / email — never ask the user on a separate page. */
+export function resolveDisplayName(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+} | null): string {
+  const metadata = (user?.user_metadata ?? {}) as { name?: string; full_name?: string };
+  const fromMeta = (metadata.name || metadata.full_name || '').trim();
+  if (fromMeta) return fromMeta;
+  const email = (user?.email ?? '').trim();
+  if (email.includes('@')) return email.split('@')[0] || 'User';
+  return 'User';
+}
+
+function isAlreadyOnboardedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes('already onboarded') ||
+    message.includes('already registered') ||
+    message.includes('Email already')
+  );
+}
+
+/**
+ * Ensure Nest app user + sole company exist. Never redirects to a name form —
+ * always derives the name and treats "already onboarded" as success.
+ */
+export async function ensureOnboarded(accessToken: string): Promise<void> {
+  const client = createAuthClient(getApiBaseUrl());
+  const session = await client.session(accessToken);
+  if (session.onboarded) {
+    return;
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  try {
+    await client.onboard(accessToken, {
+      name: resolveDisplayName(user),
+      email: user?.email ?? undefined,
+    });
+  } catch (error) {
+    if (isAlreadyOnboardedError(error)) {
+      return;
+    }
+    throw error;
+  }
+}
+
 export async function routeAfterAuth(
   accessToken: string,
   router: AppRouterInstance,
 ): Promise<string | null> {
-  const client = createAuthClient(getApiBaseUrl());
-
   try {
-    const session = await client.session(accessToken);
-    if (!session.onboarded) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const metadata = (user?.user_metadata ?? {}) as { name?: string; full_name?: string };
-      const displayName = (metadata.name || metadata.full_name || user?.email?.split('@')[0] || '').trim();
-
-      // Auto-create the sole company from the user's name — no workspace/company form.
-      if (displayName) {
-        try {
-          await client.onboard(accessToken, {
-            name: displayName,
-            email: user?.email ?? undefined,
-          });
-          router.replace('/dashboard');
-          return null;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          if (message.includes('already onboarded')) {
-            router.replace('/dashboard');
-            return null;
-          }
-          // Fall through to minimal name form if auto-onboard fails for other reasons.
-        }
-      }
-
-      router.replace('/signup?onboard=1');
-      return null;
-    }
+    await ensureOnboarded(accessToken);
     router.replace('/dashboard');
     return null;
-  } catch {
-    return 'Could not reach the API. Verify NEXT_PUBLIC_API_URL and Railway CORS_ORIGINS include this site.';
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('Network error') || message.includes('CORS') || message.includes('Could not reach')) {
+      return 'Could not reach the API. Verify NEXT_PUBLIC_API_URL and Railway CORS_ORIGINS include this site.';
+    }
+    return mapAuthError(error, 'Could not finish sign in. Please try again.');
   }
 }
 
