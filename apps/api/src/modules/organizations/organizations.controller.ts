@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -11,7 +13,12 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/types/jwt-payload';
 import { SupabaseJwtGuard } from '../auth/guards/supabase-jwt.guard';
-import { CreateOrganizationDto, UpdateOrganizationDto } from './dto/organizations.dto';
+import {
+  AddOrganizationMemberDto,
+  CreateOrganizationDto,
+  UpdateOrganizationDto,
+  UpdateOrganizationMemberDto,
+} from './dto/organizations.dto';
 import { OrganizationsService } from './organizations.service';
 
 @Controller('organizations')
@@ -44,5 +51,47 @@ export class OrganizationsController {
     @Body() dto: UpdateOrganizationDto,
   ) {
     return this.organizationsService.updateForUser(user.userId, organizationId, dto);
+  }
+
+  @Get(':organizationId/members')
+  listMembers(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('organizationId', ParseUUIDPipe) organizationId: string,
+  ) {
+    return this.organizationsService.listMembers(user.userId, organizationId);
+  }
+
+  @Post(':organizationId/members')
+  addMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('organizationId', ParseUUIDPipe) organizationId: string,
+    @Body() dto: AddOrganizationMemberDto,
+  ) {
+    return this.organizationsService.addMember(user.userId, organizationId, dto);
+  }
+
+  @Patch(':organizationId/members/:userId')
+  updateMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('organizationId', ParseUUIDPipe) organizationId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() dto: UpdateOrganizationMemberDto,
+  ) {
+    return this.organizationsService.updateMemberRole(
+      user.userId,
+      organizationId,
+      userId,
+      dto,
+    );
+  }
+
+  @Delete(':organizationId/members/:userId')
+  @HttpCode(204)
+  removeMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('organizationId', ParseUUIDPipe) organizationId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ) {
+    return this.organizationsService.removeMember(user.userId, organizationId, userId);
   }
 }

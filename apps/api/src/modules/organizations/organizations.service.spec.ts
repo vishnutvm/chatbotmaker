@@ -1,6 +1,7 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import type { OrganizationsRepository } from './organizations.repository';
+import type { UsersRepository } from '../users/users.repository';
 
 describe('OrganizationsService', () => {
   const org = {
@@ -14,19 +15,29 @@ describe('OrganizationsService', () => {
   };
 
   let organizationsRepository: jest.Mocked<OrganizationsRepository>;
+  let usersRepository: jest.Mocked<UsersRepository>;
   let service: OrganizationsService;
 
   beforeEach(() => {
     organizationsRepository = {
       findMembershipsWithOrganizations: jest.fn(),
-      countMembershipsForUser: jest.fn(),
       createWithOwner: jest.fn(),
       findOrganizationById: jest.fn(),
       findMembership: jest.fn(),
+      findMembers: jest.fn(),
       updateOrganizationName: jest.fn(),
+      createMembership: jest.fn(),
+      updateMemberRole: jest.fn(),
+      deleteMembership: jest.fn(),
+      countOwners: jest.fn(),
     } as unknown as jest.Mocked<OrganizationsRepository>;
 
-    service = new OrganizationsService(organizationsRepository);
+    usersRepository = {
+      findByEmail: jest.fn(),
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<UsersRepository>;
+
+    service = new OrganizationsService(organizationsRepository, usersRepository);
   });
 
   it('lists organizations for the user', async () => {
@@ -55,13 +66,13 @@ describe('OrganizationsService', () => {
     await expect(service.getForUser('user-2', 'org-1')).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('forbids non-owners from updating organization name', async () => {
+  it('forbids members from updating organization name', async () => {
     organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
     organizationsRepository.findMembership.mockResolvedValue({
       id: 'm2',
       userId: 'user-2',
       organizationId: 'org-1',
-      role: 'admin',
+      role: 'member',
       createdAt: org.createdAt,
       updatedAt: org.updatedAt,
     } as never);
@@ -71,7 +82,27 @@ describe('OrganizationsService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('allows owners to update organization name', async () => {
+  it('allows admins to update organization name', async () => {
+    organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
+    organizationsRepository.findMembership.mockResolvedValue({
+      id: 'm2',
+      userId: 'user-2',
+      organizationId: 'org-1',
+      role: 'admin',
+      createdAt: org.createdAt,
+      updatedAt: org.updatedAt,
+    } as never);
+    organizationsRepository.updateOrganizationName.mockResolvedValue({
+      ...org,
+      name: 'New',
+    } as never);
+
+    const result = await service.updateForUser('user-2', 'org-1', { name: 'New' });
+    expect(result.name).toBe('New');
+    expect(result.role).toBe('admin');
+  });
+
+  it('rejects add member when email is unknown', async () => {
     organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
     organizationsRepository.findMembership.mockResolvedValue({
       id: 'm1',
@@ -81,41 +112,36 @@ describe('OrganizationsService', () => {
       createdAt: org.createdAt,
       updatedAt: org.updatedAt,
     } as never);
-    organizationsRepository.updateOrganizationName.mockResolvedValue({
-      ...org,
-      name: 'New',
-    } as never);
+    usersRepository.findByEmail.mockResolvedValue(null);
 
-    const result = await service.updateForUser('user-1', 'org-1', { name: 'New' });
-    expect(result.name).toBe('New');
-    expect(result.role).toBe('owner');
+    await expect(
+      service.addMember('user-1', 'org-1', { email: 'missing@example.com' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('rejects create when the user already has a company', async () => {
-    organizationsRepository.countMembershipsForUser.mockResolvedValue(1);
-
-    await expect(service.create('user-1', { name: 'Second Co' })).rejects.toBeInstanceOf(
-      ConflictException,
-    );
-    expect(organizationsRepository.createWithOwner).not.toHaveBeenCalled();
-  });
-
-  it('creates a company when the user has none', async () => {
-    organizationsRepository.countMembershipsForUser.mockResolvedValue(0);
-    organizationsRepository.createWithOwner.mockResolvedValue({
-      organization: org,
-      membership: {
+  it('blocks removing the sole owner', async () => {
+    organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
+    organizationsRepository.findMembership
+      .mockResolvedValueOnce({
         id: 'm1',
         userId: 'user-1',
         organizationId: 'org-1',
         role: 'owner',
         createdAt: org.createdAt,
         updatedAt: org.updatedAt,
-      },
-    } as never);
+      } as never)
+      .mockResolvedValueOnce({
+        id: 'm1',
+        userId: 'user-1',
+        organizationId: 'org-1',
+        role: 'owner',
+        createdAt: org.createdAt,
+        updatedAt: org.updatedAt,
+      } as never);
+    organizationsRepository.countOwners.mockResolvedValue(1);
 
-    const result = await service.create('user-1', { name: 'Acme' });
-    expect(result.name).toBe('Acme');
-    expect(result.role).toBe('owner');
+    await expect(service.removeMember('user-1', 'org-1', 'user-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });

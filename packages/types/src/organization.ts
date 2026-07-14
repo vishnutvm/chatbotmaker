@@ -14,8 +14,20 @@ export interface OrganizationDetail extends OrganizationSummary {
   updatedAt: string;
 }
 
+export interface OrganizationMemberDto {
+  userId: string;
+  email: string;
+  name: string;
+  role: OrganizationRole;
+  createdAt: string;
+}
+
 export interface OrganizationsListResponse {
   organizations: OrganizationSummary[];
+}
+
+export interface OrganizationMembersResponse {
+  members: OrganizationMemberDto[];
 }
 
 export interface CreateOrganizationRequest {
@@ -24,4 +36,13 @@ export interface CreateOrganizationRequest {
 
 export interface UpdateOrganizationRequest {
   name?: string;
+}
+
+export interface AddOrganizationMemberRequest {
+  email: string;
+  role?: Exclude<OrganizationRole, 'owner'>;
+}
+
+export interface UpdateOrganizationMemberRequest {
+  role: Exclude<OrganizationRole, 'owner'>;
 }
