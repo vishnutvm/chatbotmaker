@@ -102,11 +102,15 @@ describe('buildStartupEnvSnapshot', () => {
     process.env.DATABASE_URL =
       'postgresql://postgres.rocxcjxaqceqndkymujl:secret@aws-1-ap-south-1.pooler.supabase.com:6543/postgres';
     process.env.CORS_ORIGINS = 'https://chatbotmaker-dev.vercel.app';
+    process.env.AI_DEFAULT_MODEL = 'gpt-4o-mini';
+    process.env.OPENAI_API_KEY = 'sk-test';
 
     const snapshot = buildStartupEnvSnapshot();
 
     expect(snapshot.jwtVerification).toBe('jwks');
     expect(snapshot.databaseUrl).not.toContain('secret');
     expect(snapshot.corsOrigins).toEqual(['https://chatbotmaker-dev.vercel.app']);
+    expect(snapshot.aiDefaultModel).toBe('gpt-4o-mini');
+    expect(snapshot.secrets.openaiApiKey).toBe('set');
   });
 });

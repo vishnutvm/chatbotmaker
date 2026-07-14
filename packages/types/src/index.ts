@@ -47,3 +47,4 @@ export * from './assistant';
 export * from './knowledge';
 export * from './conversation';
 export * from './analytics';
+export * from './ai-chat';

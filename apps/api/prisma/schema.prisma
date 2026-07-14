@@ -33,6 +33,7 @@ model User {
   memberships        OrganizationMember[]
   ownedOrganizations Organization[]       @relation("OrganizationOwner")
   sentInvitations    OrganizationInvitation[] @relation("InvitationInviter")
+  aiUsageEvents      AiUsageEvent[]
 
   @@map("users")
 }
@@ -46,9 +47,10 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  owner        User                      @relation("OrganizationOwner", fields: [ownerId], references: [id])
-  members      OrganizationMember[]
-  invitations  OrganizationInvitation[]
+  owner         User                      @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  members       OrganizationMember[]
+  invitations   OrganizationInvitation[]
+  aiUsageEvents AiUsageEvent[]
 
   @@index([ownerId])
   @@map("organizations")
@@ -89,4 +91,27 @@ model OrganizationMember {
   @@index([userId])
   @@index([organizationId])
   @@map("organization_members")
+}
+
+model AiUsageEvent {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  userId           String?  @map("user_id") @db.Uuid
+  provider         String
+  model            String
+  operation        String
+  promptTokens     Int?     @map("prompt_tokens")
+  completionTokens Int?     @map("completion_tokens")
+  totalTokens      Int?     @map("total_tokens")
+  latencyMs        Int?     @map("latency_ms")
+  status           String
+  errorCode        String?  @map("error_code")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([userId, createdAt])
+  @@map("ai_usage_events")
 }

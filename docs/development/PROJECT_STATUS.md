@@ -1,6 +1,18 @@
 # Project Status — Supabase Migration
 
-**Last Updated:** 2026-07-07
+**Last Updated:** 2026-07-14
+
+---
+
+## MVP roadmap (Genie Phases)
+
+| Phase | Focus | Exit notes |
+|-------|--------|------------|
+| 2 | Authentication | Shipped — Supabase Auth + Nest onboard / session |
+| 3 | Organizations | **Shipped** — multi-company membership, Team UI, email invitations, org switcher. Docs: `docs/features/ORGANIZATIONS.md`, `docs/api/organizations.md`, `docs/database/MULTI_TENANCY.md` |
+| 4+ | AI → Knowledge → … | Follows `Docs/05-mvp-roadmap.md`; do not nest workspaces until product scope reopens them |
+
+Phase 3 exit (docs task closed): feature notes + API contract + tenancy model match restored Team commits (`8e81430`, `a6b37c7`). Cross-tenant isolation tests for future resources remain ongoing engineering debt (not blockers for Phase 3 org CRUD/invite).
 
 ---
 
@@ -61,7 +73,7 @@
 
 ## Known Issues / Technical Debt
 
-- Tenant isolation integration tests not yet written (required before Phase 3 exit)
+- Broader cross-tenant isolation integration tests for post-Phase-3 resources still thin (org membership checks exist in unit/service tests)
 - RLS policies not implemented (application-level isolation only)
 - StorageModule not wired to AppModule (used when Knowledge phase starts)
 - Dashboard uses Supabase session; httpOnly cookie migration deferred

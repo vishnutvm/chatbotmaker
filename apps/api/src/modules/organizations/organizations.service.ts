@@ -318,18 +318,29 @@ export class OrganizationsService {
     await this.organizationsRepository.deleteMembership(organizationId, targetUserId);
   }
 
-  private async requireMembership(userId: string, organizationId: string) {
-    const organization = await this.organizationsRepository.findOrganizationById(organizationId);
+  /**
+   * Asserts the user is a member of the organization.
+   * Public for cross-module use (e.g. AiService); throws 404/403 like org routes.
+   * Happy path: one DB round-trip (membership + organization join).
+   */
+  async requireMembership(userId: string, organizationId: string) {
+    const membership =
+      await this.organizationsRepository.findMembershipWithOrganization(
+        userId,
+        organizationId,
+      );
+
+    if (membership) {
+      return { organization: membership.organization, membership };
+    }
+
+    const organization =
+      await this.organizationsRepository.findOrganizationById(organizationId);
     if (!organization) {
       throw new NotFoundException('Organization not found');
     }
 
-    const membership = await this.organizationsRepository.findMembership(userId, organizationId);
-    if (!membership) {
-      throw new ForbiddenException('Not a member of this organization');
-    }
-
-    return { organization, membership };
+    throw new ForbiddenException('Not a member of this organization');
   }
 
   private requireManager(role: OrganizationRole): void {

@@ -9,6 +9,6 @@ import { OrganizationsService } from './organizations.service';
   imports: [UsersModule, forwardRef(() => AuthModule)],
   controllers: [OrganizationsController],
   providers: [OrganizationsRepository, OrganizationsService],
-  exports: [OrganizationsRepository],
+  exports: [OrganizationsRepository, OrganizationsService],
 })
 export class OrganizationsModule {}

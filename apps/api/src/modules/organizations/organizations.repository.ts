@@ -72,6 +72,19 @@ export class OrganizationsRepository {
     });
   }
 
+  /** Single round-trip membership + organization for tenant checks. */
+  findMembershipWithOrganization(
+    userId: string,
+    organizationId: string,
+  ): Promise<MembershipWithOrganization | null> {
+    return this.prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: { userId, organizationId },
+      },
+      include: { organization: true },
+    });
+  }
+
   findMembers(organizationId: string): Promise<MembershipWithUser[]> {
     return this.prisma.organizationMember.findMany({
       where: { organizationId },

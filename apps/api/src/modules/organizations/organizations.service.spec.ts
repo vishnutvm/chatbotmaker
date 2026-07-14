@@ -24,6 +24,7 @@ describe('OrganizationsService', () => {
       createWithOwner: jest.fn(),
       findOrganizationById: jest.fn(),
       findMembership: jest.fn(),
+      findMembershipWithOrganization: jest.fn(),
       findMembers: jest.fn(),
       updateOrganizationName: jest.fn(),
       createMembership: jest.fn(),
@@ -65,21 +66,21 @@ describe('OrganizationsService', () => {
   });
 
   it('forbids non-members from reading an organization', async () => {
+    organizationsRepository.findMembershipWithOrganization.mockResolvedValue(null);
     organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
-    organizationsRepository.findMembership.mockResolvedValue(null);
 
     await expect(service.getForUser('user-2', 'org-1')).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('forbids members from updating organization name', async () => {
-    organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
-    organizationsRepository.findMembership.mockResolvedValue({
+    organizationsRepository.findMembershipWithOrganization.mockResolvedValue({
       id: 'm2',
       userId: 'user-2',
       organizationId: 'org-1',
       role: 'member',
       createdAt: org.createdAt,
       updatedAt: org.updatedAt,
+      organization: org,
     } as never);
 
     await expect(
@@ -88,14 +89,14 @@ describe('OrganizationsService', () => {
   });
 
   it('allows admins to update organization name', async () => {
-    organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
-    organizationsRepository.findMembership.mockResolvedValue({
+    organizationsRepository.findMembershipWithOrganization.mockResolvedValue({
       id: 'm2',
       userId: 'user-2',
       organizationId: 'org-1',
       role: 'admin',
       createdAt: org.createdAt,
       updatedAt: org.updatedAt,
+      organization: org,
     } as never);
     organizationsRepository.updateOrganizationName.mockResolvedValue({
       ...org,
@@ -108,14 +109,14 @@ describe('OrganizationsService', () => {
   });
 
   it('creates a pending invitation when email is unknown', async () => {
-    organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
-    organizationsRepository.findMembership.mockResolvedValue({
+    organizationsRepository.findMembershipWithOrganization.mockResolvedValue({
       id: 'm1',
       userId: 'user-1',
       organizationId: 'org-1',
       role: 'owner',
       createdAt: org.createdAt,
       updatedAt: org.updatedAt,
+      organization: org,
     } as never);
     usersRepository.findByEmail.mockResolvedValue(null);
     organizationsRepository.findPendingInvitationByEmail.mockResolvedValue(null);
@@ -141,24 +142,23 @@ describe('OrganizationsService', () => {
   });
 
   it('blocks removing the sole owner', async () => {
-    organizationsRepository.findOrganizationById.mockResolvedValue(org as never);
-    organizationsRepository.findMembership
-      .mockResolvedValueOnce({
-        id: 'm1',
-        userId: 'user-1',
-        organizationId: 'org-1',
-        role: 'owner',
-        createdAt: org.createdAt,
-        updatedAt: org.updatedAt,
-      } as never)
-      .mockResolvedValueOnce({
-        id: 'm1',
-        userId: 'user-1',
-        organizationId: 'org-1',
-        role: 'owner',
-        createdAt: org.createdAt,
-        updatedAt: org.updatedAt,
-      } as never);
+    organizationsRepository.findMembershipWithOrganization.mockResolvedValue({
+      id: 'm1',
+      userId: 'user-1',
+      organizationId: 'org-1',
+      role: 'owner',
+      createdAt: org.createdAt,
+      updatedAt: org.updatedAt,
+      organization: org,
+    } as never);
+    organizationsRepository.findMembership.mockResolvedValue({
+      id: 'm1',
+      userId: 'user-1',
+      organizationId: 'org-1',
+      role: 'owner',
+      createdAt: org.createdAt,
+      updatedAt: org.updatedAt,
+    } as never);
     organizationsRepository.countOwners.mockResolvedValue(1);
 
     await expect(service.removeMember('user-1', 'org-1', 'user-1')).rejects.toBeInstanceOf(
