@@ -1,4 +1,4 @@
-import { createAuthClient } from '@genie/api-client';
+import { createAuthClient, createOrganizationsClient } from '@genie/api-client';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { getApiBaseUrl, supabase } from './supabase';
 
@@ -79,9 +79,24 @@ export async function ensureOnboarded(accessToken: string): Promise<void> {
 export async function routeAfterAuth(
   accessToken: string,
   router: AppRouterInstance,
+  options?: { inviteToken?: string | null },
 ): Promise<string | null> {
   try {
     await ensureOnboarded(accessToken);
+
+    const inviteToken = options?.inviteToken?.trim();
+    if (inviteToken) {
+      try {
+        const orgs = createOrganizationsClient(getApiBaseUrl());
+        await orgs.acceptInvitation(accessToken, { token: inviteToken });
+        router.replace('/dashboard/team');
+        return null;
+      } catch {
+        router.replace(`/invite/${encodeURIComponent(inviteToken)}`);
+        return null;
+      }
+    }
+
     router.replace('/dashboard');
     return null;
   } catch (error) {

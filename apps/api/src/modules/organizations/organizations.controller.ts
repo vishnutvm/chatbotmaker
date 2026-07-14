@@ -14,6 +14,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/types/jwt-payload';
 import { SupabaseJwtGuard } from '../auth/guards/supabase-jwt.guard';
 import {
+  AcceptInvitationDto,
   AddOrganizationMemberDto,
   CreateOrganizationDto,
   UpdateOrganizationDto,
@@ -34,6 +35,11 @@ export class OrganizationsController {
   @Post()
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateOrganizationDto) {
     return this.organizationsService.create(user.userId, dto);
+  }
+
+  @Post('invitations/accept')
+  acceptInvitation(@CurrentUser() user: AuthenticatedUser, @Body() dto: AcceptInvitationDto) {
+    return this.organizationsService.acceptInvitation(user.userId, dto.token);
   }
 
   @Get(':organizationId')
@@ -62,12 +68,12 @@ export class OrganizationsController {
   }
 
   @Post(':organizationId/members')
-  addMember(
+  inviteMember(
     @CurrentUser() user: AuthenticatedUser,
     @Param('organizationId', ParseUUIDPipe) organizationId: string,
     @Body() dto: AddOrganizationMemberDto,
   ) {
-    return this.organizationsService.addMember(user.userId, organizationId, dto);
+    return this.organizationsService.inviteMember(user.userId, organizationId, dto);
   }
 
   @Patch(':organizationId/members/:userId')
@@ -93,5 +99,23 @@ export class OrganizationsController {
     @Param('userId', ParseUUIDPipe) userId: string,
   ) {
     return this.organizationsService.removeMember(user.userId, organizationId, userId);
+  }
+
+  @Get(':organizationId/invitations')
+  listInvitations(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('organizationId', ParseUUIDPipe) organizationId: string,
+  ) {
+    return this.organizationsService.listInvitations(user.userId, organizationId);
+  }
+
+  @Delete(':organizationId/invitations/:invitationId')
+  @HttpCode(204)
+  revokeInvitation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('organizationId', ParseUUIDPipe) organizationId: string,
+    @Param('invitationId', ParseUUIDPipe) invitationId: string,
+  ) {
+    return this.organizationsService.revokeInvitation(user.userId, organizationId, invitationId);
   }
 }

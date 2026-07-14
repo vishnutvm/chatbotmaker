@@ -73,6 +73,15 @@ export function getCorsOrigins(): string[] {
   return raw.split(',').map((o) => o.trim()).filter(Boolean);
 }
 
+/** Public web app origin for invite links (falls back to first CORS origin). */
+export function getWebAppOrigin(): string {
+  const explicit = process.env.WEB_APP_URL?.trim() || process.env.APP_WEB_URL?.trim();
+  if (explicit) {
+    return explicit.replace(/\/$/, '');
+  }
+  return getCorsOrigins()[0] ?? 'http://localhost:3000';
+}
+
 /** Redact password from Postgres URLs for safe logging. */
 export function redactPostgresUrl(url: string | undefined): string {
   if (!url?.trim()) {

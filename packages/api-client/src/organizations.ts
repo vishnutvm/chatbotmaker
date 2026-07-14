@@ -1,7 +1,10 @@
 import type {
+  AcceptInvitationRequest,
   AddOrganizationMemberRequest,
   CreateOrganizationRequest,
+  InviteMemberResponse,
   OrganizationDetail,
+  OrganizationInvitationsResponse,
   OrganizationMemberDto,
   OrganizationMembersResponse,
   OrganizationsListResponse,
@@ -42,16 +45,25 @@ export class GenieOrganizationsClient extends GenieApiClient {
     );
   }
 
-  addMember(
+  inviteMember(
     accessToken: string,
     organizationId: string,
     body: AddOrganizationMemberRequest,
-  ): Promise<OrganizationMemberDto> {
-    return this.postJson<OrganizationMemberDto>(
+  ): Promise<InviteMemberResponse> {
+    return this.postJson<InviteMemberResponse>(
       `/api/v1/organizations/${organizationId}/members`,
       body,
       accessToken,
     );
+  }
+
+  /** @deprecated alias — prefer inviteMember */
+  addMember(
+    accessToken: string,
+    organizationId: string,
+    body: AddOrganizationMemberRequest,
+  ): Promise<InviteMemberResponse> {
+    return this.inviteMember(accessToken, organizationId, body);
   }
 
   updateMember(
@@ -69,6 +81,38 @@ export class GenieOrganizationsClient extends GenieApiClient {
 
   removeMember(accessToken: string, organizationId: string, userId: string): Promise<void> {
     return this.deleteRequest(`/api/v1/organizations/${organizationId}/members/${userId}`, accessToken);
+  }
+
+  listInvitations(
+    accessToken: string,
+    organizationId: string,
+  ): Promise<OrganizationInvitationsResponse> {
+    return this.getJson<OrganizationInvitationsResponse>(
+      `/api/v1/organizations/${organizationId}/invitations`,
+      accessToken,
+    );
+  }
+
+  revokeInvitation(
+    accessToken: string,
+    organizationId: string,
+    invitationId: string,
+  ): Promise<void> {
+    return this.deleteRequest(
+      `/api/v1/organizations/${organizationId}/invitations/${invitationId}`,
+      accessToken,
+    );
+  }
+
+  acceptInvitation(
+    accessToken: string,
+    body: AcceptInvitationRequest,
+  ): Promise<OrganizationMemberDto> {
+    return this.postJson<OrganizationMemberDto>(
+      '/api/v1/organizations/invitations/accept',
+      body,
+      accessToken,
+    );
   }
 }
 

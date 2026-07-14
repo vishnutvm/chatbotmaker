@@ -28,3 +28,10 @@ export class UpdateOrganizationMemberDto {
   @IsIn(['admin', 'member'])
   role!: 'admin' | 'member';
 }
+
+export class AcceptInvitationDto {
+  @IsString()
+  @MinLength(16)
+  @MaxLength(128)
+  token!: string;
+}

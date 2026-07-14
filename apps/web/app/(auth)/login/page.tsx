@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AuthDivider, AuthLink, AuthShell } from '@/components/auth/auth-shell';
@@ -9,8 +9,10 @@ import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { mapAuthError, routeAfterAuth } from '@/lib/auth-flow';
 import { supabase } from '@/lib/supabase';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get('invite');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export default function LoginPage() {
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError || !data.session) throw signInError ?? new Error('Sign in failed');
-      const routeError = await routeAfterAuth(data.session.access_token, router);
+      const routeError = await routeAfterAuth(data.session.access_token, router, { inviteToken });
       if (routeError) throw new Error(routeError);
     } catch (err) {
       setError(mapAuthError(err, 'Invalid email or password'));
@@ -35,10 +37,13 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Sign in to Genie"
-      subtitle="Access your AI assistants"
+      subtitle={inviteToken ? 'Sign in to accept your company invitation' : 'Access your AI assistants'}
       footer={
         <>
-          No account? <AuthLink href="/signup">Create account</AuthLink>
+          No account?{' '}
+          <AuthLink href={inviteToken ? `/signup?invite=${encodeURIComponent(inviteToken)}` : '/signup'}>
+            Create account
+          </AuthLink>
         </>
       }
     >
@@ -49,13 +54,32 @@ export default function LoginPage() {
           <label className="mb-1.5 block text-sm font-medium" htmlFor="email">
             Email
           </label>
-          <Input id="email" data-testid="login-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="h-11" />
+          <Input
+            id="email"
+            data-testid="login-email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11"
+          />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium" htmlFor="password">
             Password
           </label>
-          <Input id="password" data-testid="login-password" type="password" autoComplete="current-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
+          <Input
+            id="password"
+            data-testid="login-password"
+            type="password"
+            autoComplete="current-password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11"
+          />
           <div className="mt-2 text-right">
             <AuthLink href="/forgot-password">Forgot password?</AuthLink>
           </div>
@@ -66,5 +90,21 @@ export default function LoginPage() {
         </Button>
       </form>
     </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthShell title="Sign in" subtitle="Loading…" footer={<span>Please wait</span>}>
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        </AuthShell>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

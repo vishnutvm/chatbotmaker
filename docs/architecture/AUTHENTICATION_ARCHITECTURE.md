@@ -47,7 +47,7 @@ Do not build a duplicate username/password system in NestJS.
 6. Web stores Supabase session → /dashboard
 ```
 
-Product rule: **one account ↔ one company**. Signup/onboarding does not ask for workspace/team/company name.
+Product rule: accounts may belong to **multiple companies**; Team invites are supported. Onboarding still auto-creates a default company if the user has none.
 
 ### Sign In
 

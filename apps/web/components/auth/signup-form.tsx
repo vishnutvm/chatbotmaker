@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AuthDivider, AuthLink, AuthShell } from '@/components/auth/auth-shell';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
-import { ensureOnboarded, mapAuthError, resolveDisplayName } from '@/lib/auth-flow';
+import { ensureOnboarded, mapAuthError, resolveDisplayName, routeAfterAuth } from '@/lib/auth-flow';
 import { getApiBaseUrl, getSession, supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -21,6 +21,7 @@ export function SignupForm() {
   const { refresh } = useAuth();
   const searchParams = useSearchParams();
   const finishOnboard = searchParams.get('onboard') === '1';
+  const inviteToken = searchParams.get('invite');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -84,7 +85,8 @@ export function SignupForm() {
         email,
       });
       await refresh();
-      router.replace('/dashboard');
+      const routeError = await routeAfterAuth(data.session.access_token, router, { inviteToken });
+      if (routeError) throw new Error(routeError);
     } catch (err) {
       const message = mapAuthError(err, 'Could not create account. Email may already be in use.');
       if (message.includes('already set up') || message.includes('already onboarded')) {
@@ -111,10 +113,17 @@ export function SignupForm() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Sign up with Google or create an email account."
+      subtitle={
+        inviteToken
+          ? 'Create an account with the invited email to join the company.'
+          : 'Sign up with Google or create an email account.'
+      }
       footer={
         <>
-          Already have an account? <AuthLink href="/login">Sign in</AuthLink>
+          Already have an account?{' '}
+          <AuthLink href={inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : '/login'}>
+            Sign in
+          </AuthLink>
         </>
       }
     >

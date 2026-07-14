@@ -30,6 +30,29 @@ export interface OrganizationMembersResponse {
   members: OrganizationMemberDto[];
 }
 
+export interface OrganizationInvitationDto {
+  id: string;
+  organizationId: string;
+  email: string;
+  role: Exclude<OrganizationRole, 'owner'>;
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  expiresAt: string;
+  createdAt: string;
+  inviteUrl: string;
+}
+
+export interface OrganizationInvitationsResponse {
+  invitations: OrganizationInvitationDto[];
+}
+
+export type InviteMemberResponse =
+  | { status: 'added'; member: OrganizationMemberDto }
+  | { status: 'invited'; invitation: OrganizationInvitationDto };
+
+export interface AcceptInvitationRequest {
+  token: string;
+}
+
 export interface CreateOrganizationRequest {
   name: string;
 }

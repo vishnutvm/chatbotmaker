@@ -14,6 +14,13 @@ enum OrganizationRole {
   member
 }
 
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
 model User {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   supabaseUserId String   @unique @map("supabase_user_id") @db.Uuid
@@ -25,6 +32,7 @@ model User {
 
   memberships        OrganizationMember[]
   ownedOrganizations Organization[]       @relation("OrganizationOwner")
+  sentInvitations    OrganizationInvitation[] @relation("InvitationInviter")
 
   @@map("users")
 }
@@ -38,11 +46,32 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  owner   User                 @relation("OrganizationOwner", fields: [ownerId], references: [id])
-  members OrganizationMember[]
+  owner        User                      @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  members      OrganizationMember[]
+  invitations  OrganizationInvitation[]
 
   @@index([ownerId])
   @@map("organizations")
+}
+
+model OrganizationInvitation {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  email          String
+  role           OrganizationRole @default(member)
+  token          String           @unique
+  invitedById    String           @map("invited_by_id") @db.Uuid
+  status         InvitationStatus @default(pending)
+  expiresAt      DateTime         @map("expires_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("InvitationInviter", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([email])
+  @@map("organization_invitations")
 }
 
 model OrganizationMember {

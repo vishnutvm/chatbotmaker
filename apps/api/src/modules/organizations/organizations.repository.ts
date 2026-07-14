@@ -122,6 +122,66 @@ export class OrganizationsRepository {
     });
   }
 
+  countMembers(organizationId: string): Promise<number> {
+    return this.prisma.organizationMember.count({ where: { organizationId } });
+  }
+
+  findOrganizationsOwnedByUser(ownerId: string): Promise<Organization[]> {
+    return this.prisma.organization.findMany({ where: { ownerId } });
+  }
+
+  countMembershipsForUser(userId: string): Promise<number> {
+    return this.prisma.organizationMember.count({ where: { userId } });
+  }
+
+  findPendingInvitationByEmail(organizationId: string, email: string) {
+    return this.prisma.organizationInvitation.findFirst({
+      where: { organizationId, email: email.toLowerCase(), status: 'pending' },
+    });
+  }
+
+  findInvitationByToken(token: string) {
+    return this.prisma.organizationInvitation.findUnique({ where: { token } });
+  }
+
+  listPendingInvitations(organizationId: string) {
+    return this.prisma.organizationInvitation.findMany({
+      where: { organizationId, status: 'pending' },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  createInvitation(input: {
+    organizationId: string;
+    email: string;
+    role: Exclude<OrganizationRole, 'owner'>;
+    token: string;
+    invitedById: string;
+    expiresAt: Date;
+  }) {
+    return this.prisma.organizationInvitation.create({
+      data: {
+        organizationId: input.organizationId,
+        email: input.email.toLowerCase(),
+        role: input.role,
+        token: input.token,
+        invitedById: input.invitedById,
+        expiresAt: input.expiresAt,
+        status: 'pending',
+      },
+    });
+  }
+
+  updateInvitationStatus(
+    id: string,
+    status: 'pending' | 'accepted' | 'revoked' | 'expired',
+  ) {
+    return this.prisma.organizationInvitation.update({
+      where: { id },
+      data: { status },
+    });
+  }
+
   toOrganizationRole(role: OrganizationRole): OrganizationRole {
     return role;
   }

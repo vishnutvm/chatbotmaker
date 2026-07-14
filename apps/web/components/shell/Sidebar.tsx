@@ -11,6 +11,9 @@ import {
   LifeBuoy,
   Sparkles,
   CreditCard,
+  Users,
+  ChevronsUpDown,
+  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -30,6 +33,7 @@ const primary = [
   { href: '/dashboard/assistants', label: 'Assistants', icon: Bot },
   { href: '/dashboard/conversations', label: 'Conversations', icon: MessagesSquare },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/dashboard/team', label: 'Team', icon: Users },
 ] as const;
 
 const account = [
@@ -49,7 +53,7 @@ function NavItem({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
+  const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
 
   return (
     <Link
@@ -81,7 +85,7 @@ function NavItem({
 }
 
 export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
-  const { user, activeOrg, logout } = useAuth();
+  const { user, activeOrg, organizations, setActiveOrgId, logout } = useAuth();
   const initials = user?.name
     ? user.name
         .split(' ')
@@ -100,21 +104,57 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <span className="text-[15px] font-semibold tracking-tight text-foreground">Genie</span>
         </Link>
-        <Link
-          href="/dashboard/settings"
-          onClick={onNavigate}
-          className="mt-3 flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={`Company settings for ${activeOrg?.name ?? 'your company'}`}
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-xs font-semibold text-primary">
-            {companyInitials(activeOrg?.name)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-medium text-foreground">
-              {activeOrg?.name ?? 'Company'}
-            </div>
-          </div>
-        </Link>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              data-testid="org-switcher"
+              className="mt-3 flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Switch company"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-xs font-semibold text-primary">
+                {companyInitials(activeOrg?.name)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-medium text-foreground">
+                  {activeOrg?.name ?? 'Company'}
+                </div>
+                <div className="truncate text-[11px] text-muted-foreground capitalize">
+                  {activeOrg?.role ?? 'member'}
+                </div>
+              </div>
+              <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuLabel>Your companies</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {organizations.map((org) => (
+              <DropdownMenuItem
+                key={org.id}
+                data-testid={`org-switch-${org.id}`}
+                onClick={() => {
+                  setActiveOrgId(org.id);
+                  onNavigate?.();
+                }}
+                className="flex items-center gap-2"
+              >
+                <span className="min-w-0 flex-1 truncate">{org.name}</span>
+                {org.id === activeOrg?.id ? <Check className="h-4 w-4 text-primary" /> : null}
+              </DropdownMenuItem>
+            ))}
+            {organizations.length === 0 ? (
+              <DropdownMenuItem disabled>No companies</DropdownMenuItem>
+            ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/team" onClick={onNavigate}>
+                Manage team
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-6">
@@ -167,6 +207,9 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>{user?.name ?? 'Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/team">Team</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/dashboard/settings">Settings</Link>
             </DropdownMenuItem>
