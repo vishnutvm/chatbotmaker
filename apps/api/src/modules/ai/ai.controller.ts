@@ -33,6 +33,7 @@ export class AiController {
   }
 
   @Post('completions/stream')
+  @HttpCode(200)
   async stream(
     @CurrentUser() user: AuthenticatedUser,
     @Param('organizationId', ParseUUIDPipe) organizationId: string,
@@ -63,6 +64,7 @@ export class AiController {
         return;
       }
 
+      res.status(200);
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
