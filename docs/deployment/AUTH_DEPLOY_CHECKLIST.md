@@ -29,7 +29,9 @@ Required for login → onboard → dashboard on production.
 |---------|--------|
 | **Site URL** | `https://chatbotmaker-dev.vercel.app` |
 | **Redirect URLs** | `https://chatbotmaker-dev.vercel.app/auth/callback` |
+| | `https://chatbotmaker-dev.vercel.app/update-password` |
 | | `http://localhost:3000/auth/callback` |
+| | `http://localhost:3000/update-password` |
 
 Remove old `chatbotmaker-dashboard-seven.vercel.app` URLs.
 

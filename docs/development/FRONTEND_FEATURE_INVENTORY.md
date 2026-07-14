@@ -39,7 +39,7 @@
 | Assistant workspace | `/dashboard/assistants/[id]/*` | agentbloom | mock store |
 | Conversations | `/dashboard/conversations` | agentbloom | mock data |
 | Analytics | `/dashboard/analytics` | agentbloom | mock data |
-| Integrations | `/dashboard/integrations` | agentbloom | mock data |
+| Integrations | removed from nav (not in MVP) | — | — |
 | Billing | `/dashboard/billing` | agentbloom | mock data |
 | Settings / Team / Help | `/dashboard/settings` etc. | agentbloom | mock/static |
 

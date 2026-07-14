@@ -79,6 +79,14 @@ export class OrganizationsRepository {
     });
   }
 
+  findOrganizationsOwnedByUser(ownerId: string): Promise<Organization[]> {
+    return this.prisma.organization.findMany({ where: { ownerId } });
+  }
+
+  countMembers(organizationId: string): Promise<number> {
+    return this.prisma.organizationMember.count({ where: { organizationId } });
+  }
+
   toOrganizationRole(role: OrganizationRole): OrganizationRole {
     return role;
   }

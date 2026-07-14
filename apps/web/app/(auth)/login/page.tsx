@@ -56,6 +56,9 @@ export default function LoginPage() {
             Password
           </label>
           <Input id="password" data-testid="login-password" type="password" autoComplete="current-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
+          <div className="mt-2 text-right">
+            <AuthLink href="/forgot-password">Forgot password?</AuthLink>
+          </div>
         </div>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <Button type="submit" data-testid="login-submit" disabled={loading} className="w-full h-11">

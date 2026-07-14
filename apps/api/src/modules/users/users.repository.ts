@@ -35,4 +35,37 @@ export class UsersRepository {
       },
     });
   }
+
+  updateName(id: string, name: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: { name: name.trim() },
+    });
+  }
+
+  /**
+   * Removes owned organizations (members first), remaining memberships, then the user row.
+   * Caller must enforce product rules (e.g. sole member) before invoking.
+   */
+  async deleteAccountCascade(userId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const ownedOrgs = await tx.organization.findMany({
+        where: { ownerId: userId },
+        select: { id: true },
+      });
+      const ownedOrgIds = ownedOrgs.map((o) => o.id);
+
+      if (ownedOrgIds.length > 0) {
+        await tx.organizationMember.deleteMany({
+          where: { organizationId: { in: ownedOrgIds } },
+        });
+        await tx.organization.deleteMany({
+          where: { id: { in: ownedOrgIds } },
+        });
+      }
+
+      await tx.organizationMember.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
+  }
 }

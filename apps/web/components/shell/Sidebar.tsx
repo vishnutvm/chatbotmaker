@@ -7,7 +7,6 @@ import {
   Bot,
   MessagesSquare,
   BarChart3,
-  Plug,
   Settings,
   LifeBuoy,
   Sparkles,
@@ -32,8 +31,6 @@ const primary = [
   { href: '/dashboard/conversations', label: 'Conversations', icon: MessagesSquare },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
 ] as const;
-
-const extend = [{ href: '/dashboard/integrations', label: 'Integrations', icon: Plug }] as const;
 
 const account = [
   { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
@@ -125,16 +122,6 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           {primary.map((item) => (
             <NavItem key={item.href} {...item} onNavigate={onNavigate} />
           ))}
-        </div>
-        <div>
-          <div className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Extend
-          </div>
-          <div className="space-y-0.5">
-            {extend.map((item) => (
-              <NavItem key={item.href} {...item} onNavigate={onNavigate} />
-            ))}
-          </div>
         </div>
         <div>
           <div className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

@@ -117,8 +117,12 @@ On first API call after signup, if no application user exists, client must call 
 |--------|------|------|-------------|
 | POST | `/api/v1/auth/onboard` | Supabase JWT | Create app user + organization |
 | GET | `/api/v1/auth/me` | Supabase JWT | Current user + organizations |
+| PATCH | `/api/v1/auth/me` | Supabase JWT | Update profile name |
+| DELETE | `/api/v1/auth/me` | Supabase JWT | Delete app user + company + Supabase auth identity |
 
 Removed: `/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout` (handled by Supabase client).
+
+Password reset and change-password for email accounts are handled by the Supabase client (`resetPasswordForEmail` / `updateUser`), not NestJS.
 
 ---
 

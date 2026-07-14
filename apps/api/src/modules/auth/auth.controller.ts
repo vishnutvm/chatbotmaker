@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser, OptionalCurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupabaseIdentityParam } from '../../common/decorators/supabase-identity.decorator';
 import type { AuthenticatedUser, SupabaseIdentity } from '../../common/types/jwt-payload';
 import { AuthService } from './auth.service';
-import { OnboardDto } from './dto/auth.dto';
+import { OnboardDto, UpdateProfileDto } from './dto/auth.dto';
 import { SupabaseIdentityGuard } from './guards/supabase-identity.guard';
 import { SupabaseJwtGuard } from './guards/supabase-jwt.guard';
 import { OptionalSupabaseJwtGuard } from './guards/optional-supabase-jwt.guard';
@@ -22,6 +22,19 @@ export class AuthController {
   @UseGuards(SupabaseJwtGuard)
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getMe(user.userId);
+  }
+
+  @Patch('me')
+  @UseGuards(SupabaseJwtGuard)
+  updateProfile(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(user.userId, dto);
+  }
+
+  @Delete('me')
+  @HttpCode(204)
+  @UseGuards(SupabaseJwtGuard)
+  async deleteAccount(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.authService.deleteAccount(user.userId);
   }
 
   /** Validates token and returns whether the user has completed onboarding */
