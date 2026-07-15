@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/providers/auth-provider";
 
 const PLANS = [
     {
@@ -60,6 +61,9 @@ const PLANS = [
 ];
 
 export function Pricing() {
+    const { user } = useAuth();
+    const signedIn = Boolean(user);
+
     return (
         <section id="pricing" className="py-32 bg-white dark:bg-black relative overflow-hidden">
             <div className="container mx-auto px-4 md:px-6">
@@ -135,13 +139,13 @@ export function Pricing() {
                             )}
 
                             <Link
-                                href="#"
+                                href={signedIn ? "/dashboard" : "/signup"}
                                 className={`w-full py-4 rounded-xl font-semibold text-center transition-all ${plan.popular
                                     ? "bg-slate-900 dark:bg-white text-white dark:text-black hover:bg-slate-800 dark:hover:bg-zinc-200"
                                     : "bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-zinc-700"
                                     }`}
                             >
-                                {plan.cta}
+                                {signedIn ? "Go to Dashboard" : plan.cta}
                             </Link>
                         </motion.div>
                     ))}

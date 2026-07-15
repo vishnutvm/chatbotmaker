@@ -36,12 +36,15 @@
 
 ### Explicitly out of scope (deferred)
 
-| Item | Phase |
+| Item | Phase / when |
 |------|--------|
 | Knowledge / RAG / embeddings HTTP | 5 |
 | Assistants CRUD + real playground UI | 6 |
 | Widget public chat | 7 |
 | Billing meter enforcement | 8 |
+| **Org Analytics page** (`/dashboard/analytics`) | **Phase 9 — Analytics.** Hidden from nav; route redirects to Assistants home. Source kept at `analytics.tsx`. |
+| **Metrics dashboard Home** (totals, activity chart, insight cards) | **Post-MVP.** Hidden — Assistants list is `/dashboard` home for MVP. Source kept at `dashboard-home.tsx`. |
+| **Dashboard “Actionable insights”** (unanswered Qs, re-sync prompts, deploy nudges) | **Post-MVP — Phase 9 Analytics / later.** Part of deferred metrics Home. |
 | App-wide 100% coverage campaign (Layer B) | Optional — awaiting PO |
 
 ### Notion
@@ -85,8 +88,17 @@ Earlier “migration phases” 1–19 complete; phase 20 validation largely done
 
 ---
 
+## UI polish (2026-07-15)
+
+Presentation-only Premium SaaS redesign on `apps/web` (tokens, sidebar, dashboard, assistants, playground, inbox, billing/team/settings, wizard). No API/route/business-logic changes. Theme: Inter system stack + violet/indigo oklch tokens; shared light/dark/system toggle (marketing + dashboard).
+
+**MVP Home:** signed-in home is **Assistants** at `/dashboard` (metrics Home, Actionable insights, and **org Analytics** deferred — see table above). `/dashboard/assistants` and `/dashboard/analytics` redirect to `/dashboard`; nested assistant routes unchanged.
+
+---
+
 ## Next action
 
 1. **PO:** Layer B coverage campaign? Reply **yes** / **no** (optional).  
 2. **Engineering continuum:** Start **Phase 5 — Knowledge (RAG)** — contracts + schema + ingestion pipeline wired into `AIProvider` / chat context.  
-3. Ops hygiene: keep `OPENAI_API_KEY` set on Railway; prefer fixing auto-deploy so manual Railway builds are not required.
+3. Ops hygiene: keep `OPENAI_API_KEY` set on Railway; prefer fixing auto-deploy so manual Railway builds are not required.  
+4. Ship UI redesign commit when PO confirms visual QA.

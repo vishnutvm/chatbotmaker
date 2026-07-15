@@ -4,8 +4,11 @@ import { motion, useSpring } from "framer-motion";
 import { ArrowRight, Bot, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/providers/auth-provider";
 
 export function Hero() {
+    const { user, loading } = useAuth();
+    const signedIn = Boolean(user);
     const [typingStep, setTypingStep] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -93,10 +96,11 @@ export function Hero() {
                     className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mb-20"
                 >
                     <Link
-                        href="#"
+                        href={signedIn ? "/dashboard" : "/signup"}
+                        data-testid="hero-primary-cta"
                         className="group relative inline-flex items-center justify-center px-8 py-4 rounded-full bg-slate-900 dark:bg-white text-white dark:text-black font-bold hover:bg-slate-800 dark:hover:bg-zinc-200 transition-all"
                     >
-                        Start Free
+                        {loading ? "Start Free" : signedIn ? "Go to Dashboard" : "Start Free"}
                         <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </Link>
                     <Link

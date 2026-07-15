@@ -18,7 +18,7 @@ import type { OrganizationInvitationDto, OrganizationMemberDto, OrganizationRole
 import { getAccessToken, getApiBaseUrl } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { toast } from 'sonner';
-import { MoreHorizontal, Plus, Copy, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Plus, Copy, Loader2, Users } from 'lucide-react';
 
 const roleTone: Record<string, 'primary' | 'info' | 'neutral'> = {
   owner: 'primary',
@@ -154,13 +154,17 @@ export default function TeamPage() {
   return (
     <>
       <TopHeader breadcrumb={<span className="text-foreground">Team</span>} />
-      <div className="mx-auto max-w-[1080px] px-6 py-8 space-y-6">
+      <div className="mx-auto max-w-[1080px] px-6 py-8 space-y-6 animate-in fade-in duration-300">
         <PageHeader
           title="Team"
           description={`Manage who has access to ${activeOrg?.name ?? 'your company'}.`}
           actions={
             manager ? (
-              <Button data-testid="team-invite-open" onClick={() => setInviteOpen((v) => !v)}>
+              <Button
+                data-testid="team-invite-open"
+                className="rounded-xl shadow-md shadow-primary/10"
+                onClick={() => setInviteOpen((v) => !v)}
+              >
                 <Plus className="mr-1.5 h-4 w-4" /> Invite member
               </Button>
             ) : null
@@ -170,7 +174,7 @@ export default function TeamPage() {
         {inviteOpen && manager ? (
           <form
             onSubmit={onInvite}
-            className="rounded-xl border border-border bg-surface p-5 space-y-4"
+            className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-ambient"
             data-testid="team-invite-form"
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -183,7 +187,7 @@ export default function TeamPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1.5 h-10"
+                  className="mt-1.5 h-10 rounded-xl"
                   placeholder="teammate@company.com"
                 />
               </div>
@@ -192,7 +196,7 @@ export default function TeamPage() {
                 <select
                   id="invite-role"
                   data-testid="team-invite-role"
-                  className="mt-1.5 flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="mt-1.5 flex h-10 w-full rounded-xl border border-input bg-background px-3 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   value={role}
                   onChange={(e) => setRole(e.target.value as 'admin' | 'member')}
                 >
@@ -206,41 +210,55 @@ export default function TeamPage() {
               (they sign up with that email, then join).
             </p>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setInviteOpen(false)}>
+              <Button type="button" variant="ghost" className="rounded-xl" onClick={() => setInviteOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" data-testid="team-invite-submit" disabled={submitting}>
+              <Button
+                type="submit"
+                data-testid="team-invite-submit"
+                disabled={submitting}
+                className="rounded-xl shadow-md shadow-primary/10"
+              >
                 {submitting ? 'Sending…' : 'Send invite'}
               </Button>
             </div>
           </form>
         ) : null}
 
-        <div className="overflow-hidden rounded-xl border border-border bg-surface">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-ambient">
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading team…
+            <div className="flex flex-col items-center justify-center gap-3 py-20 text-sm text-muted-foreground">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-subtle">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              </div>
+              <span className="font-medium">Loading team…</span>
             </div>
           ) : members.length === 0 ? (
-            <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-              No members yet.
+            <div className="flex flex-col items-center justify-center gap-3 px-5 py-16 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/70">
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">No members yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Invite teammates to collaborate on assistants.</p>
+              </div>
             </div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border bg-surface-muted/60 text-left text-xs font-medium text-muted-foreground">
-                  <th className="px-5 py-2.5">Member</th>
-                  <th className="px-5 py-2.5">Role</th>
-                  <th className="hidden md:table-cell px-5 py-2.5">Email</th>
-                  <th className="px-5 py-2.5 w-10" />
+                <tr className="border-b border-border bg-muted/40 text-left text-xs font-medium text-muted-foreground">
+                  <th className="px-5 py-3">Member</th>
+                  <th className="px-5 py-3">Role</th>
+                  <th className="hidden md:table-cell px-5 py-3">Email</th>
+                  <th className="px-5 py-3 w-10" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {members.map((m) => (
-                  <tr key={m.userId} className="hover:bg-surface-muted/40">
+                  <tr key={m.userId} className="transition-colors hover:bg-muted/30">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-subtle text-[11px] font-semibold text-primary">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-subtle text-[11px] font-semibold text-primary ring-2 ring-primary/10">
                           {initials(m.name)}
                         </div>
                         <span className="text-sm font-medium text-foreground">
@@ -264,7 +282,7 @@ export default function TeamPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-8 w-8 rounded-xl"
                               aria-label="Member actions"
                             >
                               <MoreHorizontal className="h-4 w-4" />
@@ -299,12 +317,12 @@ export default function TeamPage() {
 
         {manager && invitations.length > 0 ? (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Pending invitations</h2>
-            <div className="overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">Pending invitations</h2>
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-ambient divide-y divide-border">
               {invitations.map((inv) => (
                 <div
                   key={inv.id}
-                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
+                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-muted/20"
                 >
                   <div>
                     <div className="text-sm font-medium text-foreground">{inv.email}</div>
@@ -317,6 +335,7 @@ export default function TeamPage() {
                       type="button"
                       size="sm"
                       variant="outline"
+                      className="rounded-xl"
                       onClick={() => {
                         void navigator.clipboard.writeText(inv.inviteUrl).then(() => {
                           toast.success('Invite link copied');
@@ -329,7 +348,7 @@ export default function TeamPage() {
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="text-destructive"
+                      className="rounded-xl text-destructive hover:bg-destructive-subtle hover:text-destructive"
                       onClick={() => void revokeInvite(inv.id)}
                     >
                       Revoke

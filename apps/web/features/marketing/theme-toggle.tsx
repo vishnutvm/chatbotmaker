@@ -13,14 +13,17 @@ export function ThemeToggle() {
         { value: "system" as const, icon: Monitor, label: "System" },
     ];
 
-    const currentIndex = themes.findIndex((t) => t.value === theme);
+    const currentIndex = Math.max(
+        0,
+        themes.findIndex((t) => t.value === theme),
+    );
 
     const handleToggle = () => {
         const nextIndex = (currentIndex + 1) % themes.length;
         setTheme(themes[nextIndex].value);
     };
 
-    const CurrentIcon = themes[currentIndex].icon;
+    const CurrentIcon = themes[currentIndex]?.icon ?? Sun;
 
     return (
         <div className="flex items-center gap-3">

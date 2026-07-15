@@ -1,7 +1,8 @@
 'use client';
 
-import { ThemeProvider } from '@/features/marketing/theme-provider';
+import type { ReactNode } from 'react';
 
-export function MarketingProviders({ children }: { children: React.ReactNode }) {
-  return <ThemeProvider defaultTheme="light">{children}</ThemeProvider>;
+/** ThemeProvider lives in root `Providers` so marketing + dashboard share one theme. */
+export function MarketingProviders({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }

@@ -131,12 +131,12 @@ export default function Settings() {
   return (
     <>
       <TopHeader breadcrumb={<span className="text-foreground">Settings</span>} />
-      <div className="mx-auto max-w-[720px] px-6 py-8 space-y-6">
+      <div className="mx-auto max-w-[720px] px-6 py-8 space-y-6 animate-in fade-in duration-300">
         <PageHeader title="Settings" description="Manage your personal account." />
 
-        <section className="rounded-xl border border-border bg-surface p-6 space-y-5">
-          <h2 className="text-base font-semibold text-foreground">Profile</h2>
-          <div>
+        <section className="rounded-2xl border border-border bg-card p-6 sm:p-7 space-y-6 shadow-ambient">
+          <h2 className="text-base font-semibold tracking-tight text-foreground">Profile</h2>
+          <div className="space-y-1.5">
             <Label className="text-sm font-medium" htmlFor="settings-name">
               Name
             </Label>
@@ -145,23 +145,24 @@ export default function Settings() {
               data-testid="settings-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-2 h-10"
+              className="h-11 rounded-xl"
               autoComplete="name"
             />
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label className="text-sm font-medium">Email</Label>
-            <Input value={user?.email ?? ''} readOnly className="mt-2 h-10" />
+            <Input value={user?.email ?? ''} readOnly className="h-11 rounded-xl bg-muted/30" />
           </div>
-          <div>
+          <div className="space-y-1.5">
             <Label className="text-sm font-medium">Account created with</Label>
-            <Input value={providerLabel(authProvider)} readOnly className="mt-2 h-10" />
+            <Input value={providerLabel(authProvider)} readOnly className="h-11 rounded-xl bg-muted/30" />
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-1">
             <Button
               data-testid="settings-save-name"
               onClick={() => void saveName()}
               disabled={savingName || !nameDirty}
+              className="rounded-xl shadow-md shadow-primary/10"
             >
               {savingName ? 'Saving…' : 'Save name'}
             </Button>
@@ -169,15 +170,15 @@ export default function Settings() {
         </section>
 
         {canChangePassword ? (
-          <section className="rounded-xl border border-border bg-surface p-6 space-y-5">
+          <section className="rounded-2xl border border-border bg-card p-6 sm:p-7 space-y-6 shadow-ambient">
             <div>
-              <h2 className="text-base font-semibold text-foreground">Change password</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <h2 className="text-base font-semibold tracking-tight text-foreground">Change password</h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
                 Available for email &amp; password accounts only.
               </p>
             </div>
-            <form onSubmit={changePassword} className="space-y-4">
-              <div>
+            <form onSubmit={changePassword} className="space-y-5">
+              <div className="space-y-1.5">
                 <Label className="text-sm font-medium" htmlFor="settings-new-password">
                   New password
                 </Label>
@@ -189,11 +190,11 @@ export default function Settings() {
                   minLength={8}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="mt-2 h-10"
+                  className="h-11 rounded-xl"
                   required
                 />
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label className="text-sm font-medium" htmlFor="settings-confirm-password">
                   Confirm new password
                 </Label>
@@ -205,36 +206,46 @@ export default function Settings() {
                   minLength={8}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-2 h-10"
+                  className="h-11 rounded-xl"
                   required
                 />
               </div>
-              <div className="flex justify-end">
-                <Button type="submit" data-testid="settings-change-password" disabled={savingPassword}>
+              <div className="flex justify-end pt-1">
+                <Button
+                  type="submit"
+                  data-testid="settings-change-password"
+                  disabled={savingPassword}
+                  className="rounded-xl shadow-md shadow-primary/10"
+                >
                   {savingPassword ? 'Updating…' : 'Update password'}
                 </Button>
               </div>
             </form>
           </section>
         ) : (
-          <section className="rounded-xl border border-border bg-surface p-6">
-            <h2 className="text-base font-semibold text-foreground">Password</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+          <section className="rounded-2xl border border-border bg-card p-6 sm:p-7 shadow-ambient">
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Password</h2>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
               You signed in with Google, so password changes are managed in your Google account.
             </p>
           </section>
         )}
 
-        <section className="rounded-xl border border-destructive/30 bg-surface p-6 space-y-4">
+        <section className="rounded-2xl border border-destructive/20 bg-destructive-subtle/40 p-6 sm:p-7 space-y-5 shadow-ambient">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Delete account</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Delete account</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
               Permanently deletes your Genie account and company data. This cannot be undone.
             </p>
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" data-testid="settings-delete-account" disabled={deleting}>
+              <Button
+                variant="destructive"
+                data-testid="settings-delete-account"
+                disabled={deleting}
+                className="rounded-xl font-semibold shadow-md shadow-destructive/20 hover:shadow-lg hover:shadow-destructive/25"
+              >
                 {deleting ? 'Deleting…' : 'Delete account'}
               </Button>
             </AlertDialogTrigger>

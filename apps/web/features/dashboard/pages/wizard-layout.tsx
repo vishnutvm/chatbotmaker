@@ -32,24 +32,24 @@ function WizardInner({ children }: { children: ReactNode }) {
     <div className="fixed inset-0 z-40 flex flex-col bg-background">
 
         {/* Top bar */}
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-6">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/95 px-6 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-foreground leading-none">Create a new assistant</div>
+              <div className="text-sm font-semibold text-foreground leading-none tracking-tight">Create a new assistant</div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">Step {currentIdx + 1} of {WIZARD_STEPS.length} · {WIZARD_STEPS[currentIdx]?.label}</div>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/assistants" )}>
+          <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => router.push("/dashboard")}>
             <X className="mr-1.5 h-4 w-4" /> Save & exit
           </Button>
         </div>
 
         <div className="flex min-h-0 flex-1">
           {/* Step rail */}
-          <aside className="hidden lg:flex w-[268px] shrink-0 flex-col border-r border-border bg-surface px-5 py-8">
+          <aside className="hidden lg:flex w-[268px] shrink-0 flex-col border-r border-border bg-card px-5 py-8">
             <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Setup
             </div>
@@ -62,17 +62,17 @@ function WizardInner({ children }: { children: ReactNode }) {
                     <Link
                       href={s.path}
                       className={cn(
-                        "flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm transition-colors",
-                        active && "bg-primary-subtle text-primary",
-                        !active && "text-muted-foreground hover:bg-surface-muted hover:text-foreground",
+                        "flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm transition-all",
+                        active && "bg-primary-subtle text-primary shadow-xs",
+                        !active && "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                       )}
                     >
                       <span
                         className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
-                          done && "bg-success text-success-foreground",
-                          active && "bg-primary text-primary-foreground",
-                          !done && !active && "bg-surface-muted text-muted-foreground",
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-all",
+                          done && "bg-success text-success-foreground shadow-[0_0_12px_-2px] shadow-success/50",
+                          active && "bg-primary text-primary-foreground shadow-[0_0_12px_-2px] shadow-primary/50 ring-2 ring-primary/20",
+                          !done && !active && "bg-muted text-muted-foreground",
                         )}
                       >
                         {done ? <Check className="h-3.5 w-3.5" /> : idx + 1}
@@ -86,9 +86,9 @@ function WizardInner({ children }: { children: ReactNode }) {
                 );
               })}
             </ol>
-            <div className="mt-auto rounded-lg border border-border bg-surface-muted p-3">
+            <div className="mt-auto rounded-2xl border border-border bg-muted/40 p-3.5 shadow-ambient">
               <div className="text-xs font-medium text-foreground">Need help?</div>
-              <p className="mt-1 text-[11px] text-muted-foreground">You can change anything later. Nothing is deployed until step 5.</p>
+              <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">You can change anything later. Nothing is deployed until step 5.</p>
             </div>
           </aside>
 

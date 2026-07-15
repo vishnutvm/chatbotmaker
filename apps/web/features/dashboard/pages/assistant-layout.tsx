@@ -37,33 +37,33 @@ export function AssistantWorkspace({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   if (!a) {
-    return <div className="p-12 text-center text-muted-foreground">Assistant not found.</div>;
+    return <div className="p-12 text-center text-sm font-semibold text-muted-foreground">Assistant not found.</div>;
   }
 
   return (
     <>
       <TopHeader
         breadcrumb={
-          <div className="flex items-center gap-1.5">
-            <Link href="/dashboard/assistants" className="hover:text-foreground">
+          <div className="flex items-center gap-1.5 font-medium text-sm">
+            <Link href="/dashboard" className="hover:text-foreground transition-colors">
               Assistants
             </Link>
-            <span>/</span>
-            <span className="text-foreground">{a.name}</span>
+            <span className="text-muted-foreground/60">/</span>
+            <span className="text-foreground font-semibold">{a.name}</span>
           </div>
         }
       />
 
-      <div className="border-b border-border bg-surface">
+      <div className="border-b border-border/80 bg-card shadow-xs">
         <div className="mx-auto max-w-[1240px] px-6 pt-6 pb-0">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary">
-                <Bot className="h-5 w-5" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/5 text-primary border border-primary/10">
+                <Bot className="h-5.5 w-5.5" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="truncate text-[22px] font-semibold tracking-tight text-foreground">
+                  <h1 className="truncate text-xl font-bold tracking-tight text-foreground leading-tight">
                     {a.name}
                   </h1>
                   <StatusBadge
@@ -74,33 +74,33 @@ export function AssistantWorkspace({ children }: { children: ReactNode }) {
                     {a.status}
                   </StatusBadge>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Updated {a.lastUpdated} · {a.conversations.toLocaleString()} conversations
+                <div className="text-xs text-muted-foreground/80 mt-0.75 font-medium">
+                  Updated {a.lastUpdated} · <span className="font-semibold text-foreground">{a.conversations.toLocaleString()}</span> conversations
                 </div>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Button asChild variant="outline" size="sm">
-                <Link href="/dashboard/assistants/${id}/test">
-                  <PlayCircle className="mr-1.5 h-4 w-4" /> Test
+              <Button asChild variant="outline" size="sm" className="rounded-lg text-xs font-semibold border-border/80 hover:bg-muted/80">
+                <Link href={`/dashboard/assistants/${id}/test`}>
+                  <PlayCircle className="mr-1.5 h-4 w-4" /> Playground
                 </Link>
               </Button>
-              <Button asChild size="sm">
-                <Link href="/dashboard/assistants/${id}/deploy">
+              <Button asChild size="sm" className="rounded-lg text-xs font-semibold shadow-xs transition-all active:scale-98">
+                <Link href={`/dashboard/assistants/${id}/deploy`}>
                   <Rocket className="mr-1.5 h-4 w-4" /> Deploy
                 </Link>
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-8 w-8" aria-label="More">
-                    <MoreHorizontal className="h-4 w-4" />
+                  <Button variant="outline" size="icon" className="h-8.5 w-8.5 rounded-lg border-border/80 hover:bg-muted/80" aria-label="More">
+                    <MoreHorizontal className="h-4.5 w-4.5 text-muted-foreground/75" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                  <DropdownMenuItem>Pause</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                <DropdownMenuContent align="end" className="rounded-xl shadow-lg border border-border/80">
+                  <DropdownMenuItem className="font-semibold text-sm">Duplicate</DropdownMenuItem>
+                  <DropdownMenuItem className="font-semibold text-sm">Pause</DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border/60" />
+                  <DropdownMenuItem className="text-destructive font-semibold text-sm focus:bg-destructive/10">Delete</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -117,7 +117,7 @@ export function AssistantWorkspace({ children }: { children: ReactNode }) {
 function TabBar({ assistantId, pathname }: { assistantId: string; pathname: string }) {
   const router = useRouter();
   return (
-    <nav className="mt-6 -mb-px flex gap-1 overflow-x-auto" role="tablist">
+    <nav className="mt-6 -mb-px flex gap-1 overflow-x-auto border-b border-border/40 scrollbar-none" role="tablist">
       {tabs.map((t) => {
         const href = `/dashboard/assistants/${assistantId}/${t.id}`;
         const active = pathname === href;
@@ -128,10 +128,10 @@ function TabBar({ assistantId, pathname }: { assistantId: string; pathname: stri
             aria-selected={active}
             onClick={() => router.push(href)}
             className={cn(
-              'shrink-0 border-b-2 px-3 py-2.5 text-sm transition-colors',
+              'shrink-0 border-b-2 px-3.5 py-3 text-xs uppercase tracking-wider font-bold transition-all duration-200 outline-none',
               active
-                ? 'border-primary text-foreground font-medium'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground/80 hover:text-foreground hover:border-border/60',
             )}
           >
             {t.label}

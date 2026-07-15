@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Deferred (Phase 9 — Analytics): org-level analytics UI.
+ * Route `/dashboard/analytics` redirects to Assistants home for MVP.
+ */
 
 import { TopHeader } from "@/components/shell/TopHeader";
 import { PageHeader } from "@/components/common/PageHeader";

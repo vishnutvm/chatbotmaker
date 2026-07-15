@@ -6,6 +6,7 @@ import { Menu, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { SidebarBody } from '@/components/shell/Sidebar';
+import { ThemeToggleButton } from '@/components/shell/ThemeToggleButton';
 
 export function MobileTopBar() {
   const [open, setOpen] = useState(false);
@@ -29,7 +30,7 @@ export function MobileTopBar() {
         </div>
         <span className="text-[15px] font-semibold tracking-tight text-foreground">Genie</span>
       </Link>
-      <div className="w-9" aria-hidden />
+      <ThemeToggleButton />
     </div>
   );
 }
