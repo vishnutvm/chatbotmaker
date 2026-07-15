@@ -1,88 +1,92 @@
-# Project Status — Supabase Migration
+# Project Status — Genie MVP
 
-**Last Updated:** 2026-07-14
+**Last Updated:** 2026-07-15
 
 ---
 
 ## MVP roadmap (Genie Phases)
 
-| Phase | Focus | Exit notes |
-|-------|--------|------------|
-| 2 | Authentication | Shipped — Supabase Auth + Nest onboard / session |
-| 3 | Organizations | **Shipped** — multi-company membership, Team UI, email invitations, org switcher. Docs: `docs/features/ORGANIZATIONS.md`, `docs/api/organizations.md`, `docs/database/MULTI_TENANCY.md` |
-| 4+ | AI → Knowledge → … | Follows `Docs/05-mvp-roadmap.md`; do not nest workspaces until product scope reopens them |
-
-Phase 3 exit (docs task closed): feature notes + API contract + tenancy model match restored Team commits (`8e81430`, `a6b37c7`). Cross-tenant isolation tests for future resources remain ongoing engineering debt (not blockers for Phase 3 org CRUD/invite).
-
----
-
-## Current Migration Phase
-
-**Phase 20:** Complete validation (in progress — local validation passed)
+| Phase | Focus | Status | Exit notes |
+|-------|--------|--------|------------|
+| 1 | Foundation | Done | Monorepo, CI, Railway/Vercel scaffold |
+| 2 | Authentication | Done | Supabase Auth + Nest onboard / session / JWKS |
+| 3 | Organizations | Done | Multi-org membership, Team UI, email invitations, org switcher. Docs: `docs/features/ORGANIZATIONS.md`, `docs/api/organizations.md`, `docs/database/MULTI_TENANCY.md` |
+| 4 | AI platform | Done (U1) | LLM layer + org-scoped chat JSON/SSE live on Railway. Docs: `docs/features/AI_PLATFORM.md`, `docs/api/ai-chat.md`, ADR 0002 |
+| 5 | Knowledge (RAG) | Next | Upload → chunk → embed → retrieve → inject into AI chat |
+| 6 | Assistants | Backlog | CRUD, playground UI wired to real AI |
+| 7–10 | Widget → Billing → Analytics → Production | Backlog | Per `Docs/05-mvp-roadmap.md` |
 
 ---
 
-## Completed Phases
+## Cleared 2026-07-14 → 2026-07-15 (this delivery window)
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1 | Repository analysis | ✅ |
-| 2 | Migration plan | ✅ |
-| 3 | ADR 0001 | ✅ |
-| 4 | Architecture documentation | ✅ |
-| 5 | Infrastructure documentation | ✅ |
-| 6 | PostgreSQL database design | ✅ |
-| 7 | Supabase configuration docs | ✅ |
-| 8 | Database foundation (Prisma) | ✅ |
-| 9 | Supabase Auth integration | ✅ |
-| 10 | Multi-tenancy foundation | ✅ |
-| 11 | Storage abstraction | ✅ |
-| 12 | pgvector foundation | ✅ |
-| 13 | RAG architecture docs | ✅ |
-| 14 | Remove MongoDB dependencies | ✅ |
-| 15 | Remove Redis MVP requirements (docs) | ✅ |
-| 16 | Remove S3 MVP requirements (docs) | ✅ |
-| 17 | Environment configuration | ✅ |
-| 18 | Deployment configuration | ✅ |
-| 19 | Update tests | ✅ |
-| 20 | Complete validation | 🔄 Local pass; CI pending |
+### Product / engineering
 
----
+1. **Phase 3 residual docs** — `ORGANIZATIONS.md`, `MULTI_TENANCY.md`, API orgs/invites, DB design for invitations.
+2. **Phase 4 Unit 1 — AI Platform Core** ([PR #2](https://github.com/vishnutvm/chatbotmaker/pull/2), merge `5ab7e05`):
+   - `AIProvider` + `OpenAiProvider` (openai only in provider)
+   - `POST /api/v1/organizations/:organizationId/ai/chat/completions`
+   - `POST …/completions/stream` (SSE: meta / delta / done / error)
+   - Prompt assembly, server-enforced `AI_DEFAULT_MODEL` (`gpt-4o-mini`)
+   - `ai_usage_events` metering stub + in-memory rate limits (30/user, 60/org)
+   - Pre-SSE **503** when `OPENAI_API_KEY` missing
+   - Shared types + thin `GenieAiClient.complete()`
+3. **Reviews** — security / performance / code Approve; live feature + UI/UX Approve after Railway redeploy.
+4. **Live verification (2026-07-15)** — health 200; unauthenticated AI chat/stream **401** (routes present); web `/` and `/login` 200.
 
-## Test Status (Local)
+### Explicitly out of scope (deferred)
 
-| Suite | Status |
-|-------|--------|
-| Unit tests | ✅ 8 passed |
-| Typecheck | ✅ Passed |
-| Build | ✅ Passed |
-| Lint | ✅ Passed |
+| Item | Phase |
+|------|--------|
+| Knowledge / RAG / embeddings HTTP | 5 |
+| Assistants CRUD + real playground UI | 6 |
+| Widget public chat | 7 |
+| Billing meter enforcement | 8 |
+| App-wide 100% coverage campaign (Layer B) | Optional — awaiting PO |
+
+### Notion
+
+- Phase 3 docs residual → Done  
+- P4 architecture / scaffold / streaming / tests → Done  
+- P4 playground smoke UI → Archived (not required for U1)  
+- Phase 4 → Done (platform unit complete)  
+- Open Genie Tasks for next work → none (create Phase 5 tasks on start)
 
 ---
 
-## Human Actions Required
+## Key document index (keep current)
 
-1. **Create Supabase project** at [supabase.com](https://supabase.com)
-2. **Configure env vars** in Railway and Vercel (see `.env.example`)
-3. **Run migrations** on Supabase: `cd apps/api && npx prisma migrate deploy`
-4. **Create storage buckets**: `knowledge`, `avatars`, `exports`
-5. **Sync external docs** in `chatbotmaker-docs` repository
-6. **Enable email auth** in Supabase dashboard
-
----
-
-## Known Issues / Technical Debt
-
-- Broader cross-tenant isolation integration tests for post-Phase-3 resources still thin (org membership checks exist in unit/service tests)
-- RLS policies not implemented (application-level isolation only)
-- StorageModule not wired to AppModule (used when Knowledge phase starts)
-- Dashboard uses Supabase session; httpOnly cookie migration deferred
-- Rate limiting not implemented
+| Topic | Path |
+|-------|------|
+| AI API contract | `docs/api/ai-chat.md` |
+| AI architecture | `docs/architecture/AI_PLATFORM_ARCHITECTURE.md` |
+| AI feature notes | `docs/features/AI_PLATFORM.md` |
+| AI provider ADR | `docs/adr/0002-ai-provider-abstraction.md` |
+| Orgs feature | `docs/features/ORGANIZATIONS.md` |
+| Orgs API | `docs/api/organizations.md` |
+| Multi-tenancy | `docs/database/MULTI_TENANCY.md` |
+| Schema / usage events | `docs/database/DATABASE_DESIGN.md` |
 
 ---
 
-## Next Action
+## Supabase migration workstream (historical)
 
-1. Deploy with Supabase credentials
-2. Add tenant isolation integration tests
-3. Sync `chatbotmaker-docs` infrastructure docs
+Earlier “migration phases” 1–19 complete; phase 20 validation largely done in CI for API. Application isolation remains the tenancy model (RLS deferred).
+
+---
+
+## Known debt (non-blocking for Phase 4 Done)
+
+- RLS policies not implemented (app-level tenant checks only)
+- StorageModule not wired into AppModule until Knowledge phase
+- Playwright full-stack auth e2e intermittently flaky in CI (not a required merge gate)
+- Railway deploy often needs manual redeploy until `Wait for CI` is off or `ENABLE_RAILWAY_GHA_DEPLOY` + `RAILWAY_TOKEN` are set
+- AI rate limiter is in-memory (Redis later / Phase 10)
+
+---
+
+## Next action
+
+1. **PO:** Layer B coverage campaign? Reply **yes** / **no** (optional).  
+2. **Engineering continuum:** Start **Phase 5 — Knowledge (RAG)** — contracts + schema + ingestion pipeline wired into `AIProvider` / chat context.  
+3. Ops hygiene: keep `OPENAI_API_KEY` set on Railway; prefer fixing auto-deploy so manual Railway builds are not required.
