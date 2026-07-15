@@ -134,7 +134,7 @@ export default function Settings() {
       <div className="mx-auto max-w-[720px] px-6 py-8 space-y-6 animate-in fade-in duration-300">
         <PageHeader title="Settings" description="Manage your personal account." />
 
-        <section className="rounded-2xl border border-border bg-card p-6 sm:p-7 space-y-6 shadow-ambient">
+        <section className="rounded-xl border border-border bg-surface p-6 sm:p-7 space-y-6">
           <h2 className="text-base font-semibold tracking-tight text-foreground">Profile</h2>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium" htmlFor="settings-name">
@@ -170,7 +170,7 @@ export default function Settings() {
         </section>
 
         {canChangePassword ? (
-          <section className="rounded-2xl border border-border bg-card p-6 sm:p-7 space-y-6 shadow-ambient">
+          <section className="rounded-xl border border-border bg-surface p-6 sm:p-7 space-y-6">
             <div>
               <h2 className="text-base font-semibold tracking-tight text-foreground">Change password</h2>
               <p className="mt-1.5 text-sm text-muted-foreground">
@@ -223,7 +223,7 @@ export default function Settings() {
             </form>
           </section>
         ) : (
-          <section className="rounded-2xl border border-border bg-card p-6 sm:p-7 shadow-ambient">
+          <section className="rounded-xl border border-border bg-surface p-6 sm:p-7">
             <h2 className="text-base font-semibold tracking-tight text-foreground">Password</h2>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
               You signed in with Google, so password changes are managed in your Google account.
@@ -231,7 +231,7 @@ export default function Settings() {
           </section>
         )}
 
-        <section className="rounded-2xl border border-destructive/20 bg-destructive-subtle/40 p-6 sm:p-7 space-y-5 shadow-ambient">
+        <section className="rounded-xl border border-destructive/20 bg-destructive-subtle/40 p-6 sm:p-7 space-y-5">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-foreground">Delete account</h2>
             <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">

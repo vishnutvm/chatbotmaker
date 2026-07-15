@@ -42,7 +42,7 @@ function WizardInner({ children }: { children: ReactNode }) {
               <div className="mt-0.5 text-[11px] text-muted-foreground">Step {currentIdx + 1} of {WIZARD_STEPS.length} · {WIZARD_STEPS[currentIdx]?.label}</div>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => router.push("/dashboard")}>
+          <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => router.push("/dashboard/assistants")}>
             <X className="mr-1.5 h-4 w-4" /> Save & exit
           </Button>
         </div>

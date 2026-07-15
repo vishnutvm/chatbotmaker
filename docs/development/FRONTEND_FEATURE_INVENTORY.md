@@ -11,7 +11,7 @@
 | Auth preserved (Supabase + NestJS onboard) | 4 flows |
 | Mock data (agentbloom store) | Dashboard lists/metrics until API wired |
 | Deprecated (`apps/dashboard`, `apps/marketing`) | Replaced by `apps/web` |
-| Deferred (post-MVP) | Metrics **Home**, **Actionable insights**, org **Analytics** (`/dashboard/analytics`) — Phase 9+ |
+| Deferred (post-MVP) | Real Conversations/Analytics data wiring; Assistants CRUD API |
 
 ## Marketing
 
@@ -30,19 +30,19 @@
 | Google OAuth | dashboard auth | `/auth/callback` | PRESERVE LOGIC |
 | Session / me | AuthProvider | `providers/auth-provider.tsx` | PRESERVE LOGIC |
 
-## Dashboard (new design from agentbloom-io)
+## Dashboard (agentbloom-io `015a994` light theme)
 
 | Feature | Route | UI source | Data |
 |---------|-------|-----------|------|
-| Home (Assistants) | `/dashboard` | agentbloom assistants-list | mock store — metrics Home deferred (`dashboard-home.tsx`) |
-| Assistants list (alias) | `/dashboard/assistants` | redirect → `/dashboard` | — |
+| Home | `/dashboard` | agentbloom `_app.dashboard` + Actionable insights | mock store |
+| Assistants list | `/dashboard/assistants` | agentbloom assistants index | mock store |
 | Create wizard (5 steps) | `/dashboard/assistants/new/*` | agentbloom | wizard context + mock |
 | Assistant workspace | `/dashboard/assistants/[id]/*` | agentbloom | mock store |
-| Conversations | `/dashboard/conversations` | agentbloom | mock data |
-| Analytics | `/dashboard/analytics` | agentbloom | **Hidden for MVP** — nav removed; redirects to `/dashboard`. Restore in Phase 9. |
-| Integrations | removed from nav (not in MVP) | — | — |
+| Conversations | `/dashboard/conversations` | agentbloom | mock inbox (UI restored) |
+| Analytics | `/dashboard/analytics` | agentbloom | mock metrics (UI restored) |
+| Integrations | omitted from Genie nav | — | — |
 | Billing | `/dashboard/billing` | agentbloom | mock data |
-| Settings / Team / Help | `/dashboard/settings` etc. | agentbloom | mock/static |
+| Settings / Team / Help | `/dashboard/settings` etc. | agentbloom | Genie invite API on Team |
 
 ## Deprecated
 
@@ -56,4 +56,4 @@
 3. Copy privacy/terms pages to `apps/web`
 4. Point Vercel project to `apps/web`
 5. Remove `apps/dashboard` and `apps/marketing` after deploy validation
-6. **Later (not MVP):** Restore metrics **Home** (`dashboard-home.tsx`), **Actionable insights**, and org **Analytics** (`/dashboard/analytics` + sidebar) once real usage data exists (Phase 9+)
+6. Wire Conversations/Analytics to real persistence when available

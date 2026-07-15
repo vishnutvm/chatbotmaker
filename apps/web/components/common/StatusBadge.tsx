@@ -1,18 +1,18 @@
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
-type Tone = "success" | "warning" | "error" | "info" | "neutral" | "primary";
+type Tone = 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'primary';
 
 const styles: Record<Tone, string> = {
-  success: "bg-success-subtle/80 text-success border border-success/15",
-  warning: "bg-warning-subtle/80 text-warning border border-warning/15",
-  error: "bg-destructive-subtle/10 text-destructive border border-destructive/10",
-  info: "bg-info-subtle/80 text-info border border-info/15",
-  neutral: "bg-muted/60 text-muted-foreground border border-border",
-  primary: "bg-primary-subtle/80 text-primary border border-primary/15",
+  success: 'bg-success-subtle text-success',
+  warning: 'bg-warning-subtle text-warning',
+  error: 'bg-red-50 text-destructive',
+  info: 'bg-info-subtle text-info',
+  neutral: 'bg-surface-muted text-muted-foreground',
+  primary: 'bg-primary-subtle text-primary',
 };
 
 export function StatusBadge({
-  tone = "neutral",
+  tone = 'neutral',
   children,
   dot = true,
   className,
@@ -25,7 +25,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none shadow-2xs",
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium',
         styles[tone],
         className,
       )}
@@ -33,13 +33,13 @@ export function StatusBadge({
       {dot && (
         <span
           className={cn(
-            "h-1.25 w-1.25 rounded-full shadow-2xs",
-            tone === "success" && "bg-success",
-            tone === "warning" && "bg-warning",
-            tone === "error" && "bg-destructive",
-            tone === "info" && "bg-info",
-            tone === "neutral" && "bg-muted-foreground/60",
-            tone === "primary" && "bg-primary",
+            'h-1.5 w-1.5 rounded-full',
+            tone === 'success' && 'bg-success',
+            tone === 'warning' && 'bg-warning',
+            tone === 'error' && 'bg-destructive',
+            tone === 'info' && 'bg-info',
+            tone === 'neutral' && 'bg-muted-foreground/60',
+            tone === 'primary' && 'bg-primary',
           )}
         />
       )}

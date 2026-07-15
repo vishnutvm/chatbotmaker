@@ -174,7 +174,7 @@ export default function TeamPage() {
         {inviteOpen && manager ? (
           <form
             onSubmit={onInvite}
-            className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-ambient"
+            className="rounded-xl border border-border bg-surface p-6 space-y-4"
             data-testid="team-invite-form"
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -225,7 +225,7 @@ export default function TeamPage() {
           </form>
         ) : null}
 
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-ambient">
+        <div className="overflow-hidden rounded-xl border border-border bg-surface">
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-3 py-20 text-sm text-muted-foreground">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-subtle">
@@ -318,7 +318,7 @@ export default function TeamPage() {
         {manager && invitations.length > 0 ? (
           <section className="space-y-3">
             <h2 className="text-sm font-semibold tracking-tight text-foreground">Pending invitations</h2>
-            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-ambient divide-y divide-border">
+            <div className="overflow-hidden rounded-xl border border-border bg-surface divide-y divide-border">
               {invitations.map((inv) => (
                 <div
                   key={inv.id}
