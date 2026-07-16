@@ -12,7 +12,7 @@
 | 2 | Authentication | Done | Supabase Auth + Nest onboard / session / JWKS |
 | 3 | Organizations | Done | Multi-org membership, Team UI, email invitations, org switcher. Docs: `docs/features/ORGANIZATIONS.md`, `docs/api/organizations.md`, `docs/database/MULTI_TENANCY.md` |
 | 4 | AI platform | Done (U1) | LLM layer + org-scoped chat JSON/SSE live on Railway. Docs: `docs/features/AI_PLATFORM.md`, `docs/api/ai-chat.md`, ADR 0002 |
-| 5 | Knowledge (RAG) | Partial MVP | Text + URL knowledge on assistants (no embeddings yet). Full chunk/embed/retrieve next. |
+| 5 | Knowledge (RAG) | Done (MVP) | Text + URL ingest → chunk/embed/pgvector retrieve in assistant chat; dump fallback. File/crawl deferred. |
 | 6 | Assistants | In progress (wizard E2E) | CRUD + Create→Teach→Customize→Test→Deploy against real API. Docs: `docs/api/assistants.md`, `docs/features/ASSISTANTS.md` |
 | 7–10 | Widget → Billing → Analytics → Production | Backlog | Per `Docs/05-mvp-roadmap.md` |
 
@@ -109,6 +109,6 @@ Presentation-only Premium SaaS redesign on `apps/web` (tokens, sidebar, dashboar
 ## Next action
 
 1. Confirm Vercel **Production Branch = `main`** (one-time dashboard click if not already).  
-2. **Engineering continuum:** Start **Phase 5 — Knowledge (RAG)** — chunk/embed/pgvector retrieve into assistant chat.  
+2. **Engineering continuum:** Phase 6 residuals (knowledge tab mocks, pagination, conversations) or **Phase 7 Widget**.  
 3. Keep `OPENAI_API_KEY` set on Railway.  
 4. **PO:** Layer B coverage campaign? Reply **yes** / **no** (optional).

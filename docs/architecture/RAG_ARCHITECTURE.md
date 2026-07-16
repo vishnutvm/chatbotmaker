@@ -1,48 +1,61 @@
 # RAG Architecture
 
-**Last Updated:** 2026-07-07  
+**Last Updated:** 2026-07-16  
 **Implementation Phase:** 5 (Knowledge)
+
+---
+
+## MVP status (shipped)
+
+Phase 5 MVP wires **assistant-scoped** RAG for text + URL knowledge:
+
+1. `POST …/knowledge` creates a `knowledge_sources` row (`pending`)
+2. `RagIngestionService` chunks content → `AiService.embed` → inserts `document_chunks`
+3. Status → `ready` | `failed`
+4. Assistant chat embeds the latest user message → tenant-filtered similarity search → prompt context
+5. If no chunks: **fallback** to truncated dump of ready source contents (pre-RAG behavior)
+
+**Out of scope for this MVP:** file upload, site crawl/sitemap, separate `knowledge_bases` tables, HNSW/IVFFlat indexes, background re-index jobs.
+
+---
+
+## MVP ID aliases
+
+| `document_chunks` column | MVP meaning | FK target |
+|--------------------------|-------------|-----------|
+| `knowledge_base_id` | Assistant scope | `assistants.id` |
+| `document_id` | Knowledge source | `knowledge_sources.id` |
+| `organization_id` | Tenant | `organizations.id` |
+
+Do not invent separate knowledge-base rows until product requires multi-assistant shared corpora.
 
 ---
 
 ## Pipeline
 
 ```text
-Document Upload
+Knowledge source (text paste | URL fetch)
     |
     v
-Supabase Storage
+Chunking (apps/api/src/modules/rag/chunking.ts)
     |
     v
-Document Processing (background job)
-    |
-    v
-Text Extraction (PDF/DOCX/TXT/MD)
-    |
-    v
-Text Normalization
-    |
-    v
-Chunking (configurable size/overlap)
-    |
-    v
-Embedding Generation (AIProvider.embed)
+Embedding (AiService.embed → AIProvider.embed, text-embedding-3-small)
     |
     v
 PostgreSQL + pgvector (document_chunks)
     |
     v
-Vector Similarity Search (tenant-filtered)
+Query embed + similarity search (org + assistant filters)
     |
     v
-Context Construction
+Context construction (bounded char budget)
     |
     v
-LLM Generation (AIProvider.chat / stream)
-    |
-    v
-Response
+LLM generation (assistant chat / AiService.complete)
 ```
+
+Future (full Phase 5+): Document Upload → Storage → extraction → same chunk/embed path.
 
 ---
 
@@ -52,10 +65,10 @@ Response
 |--------|------|-------------|
 | id | uuid | Primary key |
 | organization_id | uuid | Tenant isolation (FK) |
-| knowledge_base_id | uuid | Knowledge scope (FK) |
-| document_id | uuid | Source document (FK) |
+| knowledge_base_id | uuid | MVP: assistant_id (FK) |
+| document_id | uuid | MVP: knowledge_source_id (FK) |
 | content | text | Chunk text |
-| metadata | jsonb | Page, section, source offsets |
+| metadata | jsonb | sourceName, type, chunkIndex |
 | embedding | vector(1536) | pgvector embedding |
 | embedding_model | text | e.g. text-embedding-3-small |
 | embedding_version | text | Model version tag |
@@ -63,6 +76,8 @@ Response
 | chunk_index | int | Order within document |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
+
+Unique: `(document_id, chunk_index)`.
 
 ---
 
@@ -86,8 +101,9 @@ LIMIT $4;
 
 1. Enable `pgvector` extension
 2. B-tree indexes on `(organization_id, knowledge_base_id)`
-3. At low volume (< 100K chunks): sequential scan acceptable with tenant filter
-4. At scale: add IVFFlat or HNSW index on `embedding` column
+3. Unique index on `(document_id, chunk_index)`
+4. At low volume (< 100K chunks): sequential scan acceptable with tenant filter
+5. At scale: add IVFFlat or HNSW index on `embedding` column
 
 ---
 
@@ -95,14 +111,29 @@ LIMIT $4;
 
 Default: OpenAI `text-embedding-3-small` (1536 dimensions).
 
-Configured via environment; tracked in `embedding_model` and `embedding_version` columns for re-indexing.
+Configured via `AI_EMBEDDING_MODEL`; tracked in `embedding_model` and `embedding_version` for future re-indexing.
+
+Batch size on ingest: 16 texts per `AiService.embed` call.
 
 ---
 
-## Re-indexing
+## Module layout
+
+| Piece | Path |
+|-------|------|
+| RagModule | `apps/api/src/modules/rag/rag.module.ts` |
+| Chunking | `chunking.ts` |
+| Repository | `document-chunks.repository.ts` |
+| Ingest | `rag-ingestion.service.ts` |
+| Retrieve | `rag-retrieval.service.ts` |
+| Wire-in | `AssistantsService.addKnowledge` / `chat` |
+
+---
+
+## Re-indexing (future)
 
 When embedding model changes:
-1. Mark knowledge base as `reindexing`
+1. Mark sources for reindex
 2. Background job regenerates embeddings
 3. Atomic swap or versioned queries during transition
 
@@ -110,14 +141,15 @@ When embedding model changes:
 
 ## Security
 
-- Cross-tenant vector retrieval must be impossible
-- Integration tests required for tenant isolation on vector queries
-- Document access authorized before retrieval context included in prompt
+- Cross-tenant vector retrieval must be impossible (org + assistant filters)
+- Knowledge URL fetch: SSRF guards (no private hosts, no redirects)
+- Document access authorized via org membership before retrieval context is included
 
 ---
 
 ## Cost Considerations
 
-- Cache embeddings; never re-embed unchanged chunks
-- Batch embedding API calls where possible
-- Limit chunk count per knowledge base on free tier
+- Cache embeddings; never re-embed unchanged chunks (delete-by-source then re-insert on ingest)
+- Batch embedding API calls (size 16)
+- Bound prompt context (`RAG_PROMPT_CHAR_BUDGET` / dump budget 12k chars)
+- Cap knowledge content length on ingest (100k chars)

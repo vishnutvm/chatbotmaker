@@ -6,7 +6,7 @@ export type AiUsageCreateInput = {
   userId: string | null;
   provider: string;
   model: string;
-  operation: 'chat' | 'chat_stream';
+  operation: 'chat' | 'chat_stream' | 'embed';
   promptTokens: number | null;
   completionTokens: number | null;
   totalTokens: number | null;

@@ -15,6 +15,8 @@ import type {
 } from '@genie/types';
 import { AiService } from '../ai/ai.service';
 import { OrganizationsService } from '../organizations/organizations.service';
+import { RagIngestionService } from '../rag/rag-ingestion.service';
+import { RagRetrievalService } from '../rag/rag-retrieval.service';
 import { ASSISTANT_PURPOSE_PRESETS } from './assistant-presets';
 import type { AssistantWithCount, AssistantWithKnowledge } from './assistants.repository';
 import { AssistantsRepository } from './assistants.repository';
@@ -27,11 +29,11 @@ import type {
 
 const MANAGER_ROLES: OrganizationRole[] = ['owner', 'admin'];
 
-/** MVP knowledge limits — full crawl/embeddings ingestion is a later phase. */
+/** MVP knowledge limits — file upload / site crawl remain later phases. */
 const MAX_KNOWLEDGE_CONTENT_CHARS = 100_000;
 const URL_FETCH_TIMEOUT_MS = 10_000;
 const URL_FETCH_USER_AGENT = 'GenieBot/1.0';
-/** Chat system-prompt knowledge budget — keeps prompt tokens/cost bounded. */
+/** Fallback dump budget when vector retrieval returns no chunks. */
 const KNOWLEDGE_PROMPT_CHAR_BUDGET = 12_000;
 
 const DEFAULT_APPEARANCE: AssistantAppearance = {
@@ -48,6 +50,8 @@ export class AssistantsService {
     private readonly assistantsRepository: AssistantsRepository,
     private readonly organizationsService: OrganizationsService,
     private readonly aiService: AiService,
+    private readonly ragIngestion: RagIngestionService,
+    private readonly ragRetrieval: RagRetrievalService,
   ) {}
 
   async list(userId: string, organizationId: string): Promise<AssistantsListResponse> {
@@ -183,11 +187,11 @@ export class AssistantsService {
         assistantId,
         type: 'text',
         name: dto.name.trim(),
-        status: 'ready',
+        status: 'pending',
         content: content.slice(0, MAX_KNOWLEDGE_CONTENT_CHARS),
         url: null,
       });
-      return this.toKnowledgeDto(created);
+      return this.toKnowledgeDto(await this.ingestReadySource(userId, created));
     }
 
     const url = dto.url?.trim();
@@ -201,11 +205,16 @@ export class AssistantsService {
       assistantId,
       type: 'url',
       name: dto.name.trim(),
-      status,
+      status: status === 'ready' ? 'pending' : 'failed',
       content,
       url,
     });
-    return this.toKnowledgeDto(created);
+
+    if (status !== 'ready' || !content) {
+      return this.toKnowledgeDto(created);
+    }
+
+    return this.toKnowledgeDto(await this.ingestReadySource(userId, created));
   }
 
   async listKnowledge(
@@ -253,15 +262,53 @@ export class AssistantsService {
       throw new NotFoundException('Assistant not found');
     }
 
-    const systemPrompt = this.buildSystemPrompt(assistant);
     // Defense in depth: never forward client `system` roles even if validation regresses.
     const messages = dto.messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+
+    const retrieved = await this.ragRetrieval.retrieveForQuery({
+      userId,
+      organizationId,
+      assistantId,
+      query: lastUserMessage,
+    });
+    const ragContext = this.ragRetrieval.formatKnowledgeContext(retrieved);
+    const systemPrompt = ragContext
+      ? this.buildSystemPromptWithContext(assistant, ragContext)
+      : this.buildSystemPrompt(assistant);
+
     const result = await this.aiService.complete(userId, organizationId, {
       systemPrompt,
       messages,
     });
 
     return { ...result, assistantId };
+  }
+
+  /**
+   * Chunk + embed a knowledge source that already has content.
+   * Updates status to ready|failed; never throws to the HTTP caller.
+   */
+  private async ingestReadySource(
+    userId: string,
+    source: KnowledgeSourceRow,
+  ): Promise<KnowledgeSourceRow> {
+    const content = source.content?.trim() ?? '';
+    if (!content) {
+      return this.assistantsRepository.updateKnowledgeSource(source.id, { status: 'failed' });
+    }
+
+    const status = await this.ragIngestion.ingestKnowledgeSource({
+      userId,
+      organizationId: source.organizationId,
+      assistantId: source.assistantId,
+      knowledgeSourceId: source.id,
+      name: source.name,
+      type: source.type,
+      content,
+    });
+
+    return this.assistantsRepository.updateKnowledgeSource(source.id, { status });
   }
 
   /**
@@ -282,7 +329,17 @@ export class AssistantsService {
     }
   }
 
-  /** Instructions + knowledge contents, capped to a bounded token/cost budget. */
+  /** Instructions + RAG context (preferred path when chunks exist). */
+  private buildSystemPromptWithContext(
+    assistant: AssistantWithKnowledge,
+    knowledgeContext: string,
+  ): string {
+    const preset = ASSISTANT_PURPOSE_PRESETS[assistant.purpose];
+    const instructions = assistant.instructions?.trim() || preset.instructions;
+    return `${instructions}\n\n${knowledgeContext}`;
+  }
+
+  /** Instructions + truncated contents — no-vector fallback when retrieval is empty. */
   private buildSystemPrompt(assistant: AssistantWithKnowledge): string {
     const preset = ASSISTANT_PURPOSE_PRESETS[assistant.purpose];
     const instructions = assistant.instructions?.trim() || preset.instructions;

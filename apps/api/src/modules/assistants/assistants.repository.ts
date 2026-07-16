@@ -74,6 +74,13 @@ export class AssistantsRepository {
     return this.prisma.knowledgeSource.findUnique({ where: { id } });
   }
 
+  updateKnowledgeSource(
+    id: string,
+    data: Prisma.KnowledgeSourceUpdateInput,
+  ): Promise<KnowledgeSource> {
+    return this.prisma.knowledgeSource.update({ where: { id }, data });
+  }
+
   deleteKnowledgeSource(id: string): Promise<KnowledgeSource> {
     return this.prisma.knowledgeSource.delete({ where: { id } });
   }
