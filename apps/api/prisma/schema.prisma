@@ -86,6 +86,7 @@ model Organization {
   invitations   OrganizationInvitation[]
   aiUsageEvents AiUsageEvent[]
   assistants    Assistant[]
+  documentChunks DocumentChunk[]
 
   @@index([ownerId])
   @@map("organizations")
@@ -167,7 +168,8 @@ model Assistant {
   updatedAt      DateTime         @updatedAt @map("updated_at")
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  knowledgeSources  KnowledgeSource[]
+  knowledgeSources KnowledgeSource[]
+  documentChunks   DocumentChunk[]
 
   @@index([organizationId, updatedAt])
   @@map("assistants")
@@ -185,9 +187,35 @@ model KnowledgeSource {
   createdAt      DateTime              @default(now()) @map("created_at")
   updatedAt      DateTime              @updatedAt @map("updated_at")
 
-  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  assistant      Assistant       @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  documentChunks DocumentChunk[]
 
   @@index([assistantId])
   @@index([organizationId, assistantId])
   @@map("knowledge_sources")
+}
+
+/// RAG chunks. MVP aliases: knowledge_base_id = assistant_id, document_id = knowledge_source_id.
+model DocumentChunk {
+  id               String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String                       @map("organization_id") @db.Uuid
+  knowledgeBaseId  String                       @map("knowledge_base_id") @db.Uuid
+  documentId       String                       @map("document_id") @db.Uuid
+  content          String
+  metadata         Json                         @default("{}")
+  embedding        Unsupported("vector(1536)")?
+  embeddingModel   String?                      @map("embedding_model")
+  embeddingVersion String?                      @map("embedding_version")
+  tokenCount       Int?                         @map("token_count")
+  chunkIndex       Int                          @map("chunk_index")
+  createdAt        DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  knowledgeBase  Assistant       @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  document       KnowledgeSource @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([organizationId, knowledgeBaseId], map: "document_chunks_org_kb_idx")
+  @@map("document_chunks")
 }

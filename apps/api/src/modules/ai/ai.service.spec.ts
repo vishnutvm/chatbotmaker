@@ -237,6 +237,33 @@ describe('AiService', () => {
     expect(aiProvider.stream).not.toHaveBeenCalled();
   });
 
+  it('embeds texts after membership check and records embed usage', async () => {
+    aiProvider.embed.mockResolvedValue([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
+
+    const result = await service.embed(userId, orgId, ['hello', 'world']);
+
+    expect(organizationsService.requireMembership).toHaveBeenCalledWith(userId, orgId);
+    expect(aiProvider.embed).toHaveBeenCalledWith(['hello', 'world']);
+    expect(result.embeddings).toEqual([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
+    expect(result.model).toBe('text-embedding-3-small');
+
+    await Promise.resolve();
+    expect(usageRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: orgId,
+        userId,
+        operation: 'embed',
+        status: 'success',
+      }),
+    );
+  });
+
   it('enforces per-user rate limit before calling the provider', async () => {
     aiProvider.chat.mockResolvedValue({
       id: 'chatcmpl_rl',

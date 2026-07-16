@@ -203,6 +203,66 @@ export class AiService {
     }
   }
 
+  /**
+   * Batch-embed texts via AIProvider. Membership + rate limit + usage metering apply.
+   */
+  async embed(
+    userId: string,
+    organizationId: string,
+    texts: string[],
+  ): Promise<{ embeddings: number[][]; model: string }> {
+    if (texts.length === 0) {
+      return { embeddings: [], model: this.resolveEmbeddingModel() };
+    }
+
+    await this.organizationsService.requireMembership(userId, organizationId);
+    this.rateLimiter.assertWithinLimits(userId, organizationId);
+    this.assertAiConfigured();
+
+    const model = this.resolveEmbeddingModel();
+    const startedAt = Date.now();
+
+    try {
+      const raw = await this.aiProvider.embed(texts);
+      const embeddings = Array.isArray(raw[0])
+        ? (raw as number[][])
+        : ([raw] as number[][]);
+
+      this.logUsageFireAndForget({
+        organizationId,
+        userId,
+        model,
+        operation: 'embed',
+        usage: {
+          promptTokens: null,
+          completionTokens: null,
+          totalTokens: null,
+        },
+        latencyMs: Date.now() - startedAt,
+        status: 'success',
+        errorCode: null,
+      });
+
+      return { embeddings, model };
+    } catch (error) {
+      this.logUsageFireAndForget({
+        organizationId,
+        userId,
+        model,
+        operation: 'embed',
+        usage: { promptTokens: null, completionTokens: null, totalTokens: null },
+        latencyMs: Date.now() - startedAt,
+        status: 'error',
+        errorCode: this.errorCode(error),
+      });
+      throw error;
+    }
+  }
+
+  private resolveEmbeddingModel(): string {
+    return process.env.AI_EMBEDDING_MODEL?.trim() || 'text-embedding-3-small';
+  }
+
   private async prepare(
     userId: string,
     organizationId: string,
@@ -256,7 +316,7 @@ export class AiService {
     organizationId: string;
     userId: string;
     model: string;
-    operation: 'chat' | 'chat_stream';
+    operation: 'chat' | 'chat_stream' | 'embed';
     usage: ChatUsage;
     latencyMs: number;
     status: 'success' | 'error';

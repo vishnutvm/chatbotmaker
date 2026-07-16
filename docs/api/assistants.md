@@ -1,9 +1,9 @@
-# Assistants API (Phase 6 MVP + Knowledge text/url)
+# Assistants API (Phase 6 MVP + Phase 5 RAG)
 
-Authenticated organization-scoped assistants for the create wizard. Knowledge sources for MVP: **text** and **url** (fetched HTML→text). Full crawl/PDF/embeddings deferred.
+Authenticated organization-scoped assistants for the create wizard. Knowledge sources for MVP: **text** and **url** (fetched HTML→text), then **chunk + embed + pgvector retrieve** on chat. File upload / site crawl deferred.
 
 **Base path:** `/api/v1`  
-**Module:** `apps/api/src/modules/assistants/`
+**Module:** `apps/api/src/modules/assistants/` · RAG: `apps/api/src/modules/rag/`
 
 ## Auth & tenancy
 
@@ -70,7 +70,9 @@ or
 }
 ```
 
-URL: server fetches page, strips tags, stores text (max ~100k chars). Status `ready` or `failed`.
+URL: server fetches page, strips tags, stores text (max ~100k chars).  
+Ingest: returns `pending` immediately, then chunk + embed in the background into `document_chunks` (MVP aliases: `knowledge_base_id` = assistant id, `document_id` = source id).  
+Status lifecycle: `pending` → `ready` | `failed` (poll GET knowledge / assistant detail).
 
 **201** `KnowledgeSourceDto`
 
@@ -90,7 +92,7 @@ Sets `status: live`, `deployedAt: now`. Requires **owner** or **admin**.
 
 ### POST `/organizations/:organizationId/assistants/:assistantId/chat`
 
-Playground / Test step. Builds system prompt from assistant instructions + welcome context + knowledge contents; calls AI provider. Client messages may only use `user` / `assistant` roles (system prompt is server-owned).
+Playground / Test step. Embeds the latest user message, retrieves top-k chunks for the assistant (tenant-filtered), and builds the system prompt from instructions + retrieved context. If no chunks, falls back to a truncated dump of ready knowledge contents. Client messages may only use `user` / `assistant` roles (system prompt is server-owned).
 
 ```json
 {
@@ -125,11 +127,13 @@ KnowledgeSourceDto {
 ## Performance
 
 - List: 1 query, indexed `(organization_id, updated_at)`
-- Chat: 2 DB reads + 1 LLM call; knowledge truncated to ~12k chars total in prompt
+- Knowledge add: 1 insert + batched embed batches + chunk inserts; status update
+- Chat: membership + assistant load + 1 query embed + vector top-k + 1 LLM call; context capped ~12k chars
 
 ## Security
 
 - Always filter by `organizationId` from path + membership
+- Vector search always filters `organization_id` + `knowledge_base_id` (assistant)
 - Never trust client `organizationId` in body
-- Sanitize/limit knowledge content size
+- Sanitize/limit knowledge content size; SSRF guards on URL fetch
 - No secrets in responses

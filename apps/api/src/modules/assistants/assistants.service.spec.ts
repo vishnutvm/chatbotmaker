@@ -32,6 +32,8 @@ describe('AssistantsService', () => {
   let repository: jest.Mocked<AssistantsRepository>;
   let organizationsService: { requireMembership: jest.Mock };
   let aiService: { complete: jest.Mock };
+  let ragIngestion: { ingestKnowledgeSource: jest.Mock };
+  let ragRetrieval: { retrieveForQuery: jest.Mock; formatKnowledgeContext: jest.Mock };
   let service: AssistantsService;
 
   beforeEach(() => {
@@ -46,6 +48,7 @@ describe('AssistantsService', () => {
       createKnowledgeSource: jest.fn(),
       findKnowledgeByAssistant: jest.fn(),
       findKnowledgeById: jest.fn(),
+      updateKnowledgeSource: jest.fn(),
       deleteKnowledgeSource: jest.fn(),
     } as unknown as jest.Mocked<AssistantsRepository>;
 
@@ -60,10 +63,21 @@ describe('AssistantsService', () => {
       complete: jest.fn(),
     };
 
+    ragIngestion = {
+      ingestKnowledgeSource: jest.fn().mockResolvedValue('ready'),
+    };
+
+    ragRetrieval = {
+      retrieveForQuery: jest.fn().mockResolvedValue([]),
+      formatKnowledgeContext: jest.fn().mockReturnValue(''),
+    };
+
     service = new AssistantsService(
       repository,
       organizationsService as unknown as OrganizationsService,
       aiService as unknown as AiService,
+      ragIngestion as never,
+      ragRetrieval as never,
     );
   });
 
@@ -213,9 +227,21 @@ describe('AssistantsService', () => {
       expect(repository.createKnowledgeSource).not.toHaveBeenCalled();
     });
 
-    it('stores text knowledge as ready immediately', async () => {
+    it('stores text knowledge as pending and schedules ingest', async () => {
       repository.findById.mockResolvedValue(baseAssistant as never);
       repository.createKnowledgeSource.mockResolvedValue({
+        id: 'ks-1',
+        organizationId: orgId,
+        assistantId,
+        type: 'text',
+        name: 'Refund policy',
+        status: 'pending',
+        content: 'Refunds within 30 days.',
+        url: null,
+        createdAt,
+        updatedAt,
+      } as never);
+      repository.updateKnowledgeSource.mockResolvedValue({
         id: 'ks-1',
         organizationId: orgId,
         assistantId,
@@ -234,13 +260,24 @@ describe('AssistantsService', () => {
         content: 'Refunds within 30 days.',
       });
 
-      expect(result.status).toBe('ready');
+      expect(result.status).toBe('pending');
       expect(repository.createKnowledgeSource).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'text', status: 'ready' }),
+        expect.objectContaining({ type: 'text', status: 'pending' }),
       );
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(ragIngestion.ingestKnowledgeSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          knowledgeSourceId: 'ks-1',
+          content: 'Refunds within 30 days.',
+        }),
+      );
+      expect(repository.updateKnowledgeSource).toHaveBeenCalledWith('ks-1', { status: 'ready' });
     });
 
-    it('fetches and sanitizes URL content, marking the source ready', async () => {
+    it('fetches URL content, returns pending, and schedules ingest', async () => {
       repository.findById.mockResolvedValue(baseAssistant as never);
       repository.createKnowledgeSource.mockImplementation((data) =>
         Promise.resolve({
@@ -250,12 +287,28 @@ describe('AssistantsService', () => {
           ...data,
         } as never),
       );
+      repository.updateKnowledgeSource.mockImplementation((id, data) =>
+        Promise.resolve({
+          id,
+          organizationId: orgId,
+          assistantId,
+          type: 'url',
+          name: 'Pricing page',
+          content: 'Pricing Plans start at $10/mo.',
+          url: 'https://example.com/pricing',
+          createdAt,
+          updatedAt,
+          ...data,
+        } as never),
+      );
 
       jest.spyOn(globalThis, 'fetch').mockResolvedValue({
         ok: true,
         status: 200,
+        headers: { get: () => null },
+        body: null,
         text: async () => '<html><body><h1>Pricing</h1><p>Plans start at $10/mo.</p></body></html>',
-      } as Response);
+      } as unknown as Response);
 
       const result = await service.addKnowledge(userId, orgId, assistantId, {
         type: 'url',
@@ -263,14 +316,18 @@ describe('AssistantsService', () => {
         url: 'https://example.com/pricing',
       });
 
-      expect(result.status).toBe('ready');
+      expect(result.status).toBe('pending');
       expect(repository.createKnowledgeSource).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'url',
-          status: 'ready',
+          status: 'pending',
           content: expect.stringContaining('Plans start at $10/mo.'),
         }),
       );
+
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(ragIngestion.ingestKnowledgeSource).toHaveBeenCalled();
     });
 
     it('marks the source failed when the URL fetch throws', async () => {
@@ -291,6 +348,7 @@ describe('AssistantsService', () => {
       expect(repository.createKnowledgeSource).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'failed', content: '' }),
       );
+      expect(ragIngestion.ingestKnowledgeSource).not.toHaveBeenCalled();
     });
 
     it('rejects private/localhost URL targets without fetching', async () => {
@@ -312,11 +370,12 @@ describe('AssistantsService', () => {
       expect(repository.createKnowledgeSource).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'failed', content: '' }),
       );
+      expect(ragIngestion.ingestKnowledgeSource).not.toHaveBeenCalled();
     });
   });
 
   describe('chat', () => {
-    it('builds a system prompt from instructions + ready knowledge and delegates to AiService', async () => {
+    it('falls back to dump prompt when retrieval returns no chunks', async () => {
       repository.findByIdWithReadyKnowledge.mockResolvedValue({
         ...baseAssistant,
         knowledgeSources: [
@@ -348,6 +407,12 @@ describe('AssistantsService', () => {
         messages: [{ role: 'user', content: 'What is your refund policy?' }],
       });
 
+      expect(ragRetrieval.retrieveForQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: 'What is your refund policy?',
+          assistantId,
+        }),
+      );
       expect(aiService.complete).toHaveBeenCalledWith(
         userId,
         orgId,
@@ -358,6 +423,38 @@ describe('AssistantsService', () => {
       );
       expect(result.assistantId).toBe(assistantId);
       expect(result.content).toBe('We accept refunds within 30 days.');
+    });
+
+    it('prefers retrieved RAG context over the knowledge dump', async () => {
+      repository.findByIdWithReadyKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        knowledgeSources: [],
+      } as never);
+      ragRetrieval.retrieveForQuery.mockResolvedValue([
+        { id: 'c1', content: 'Retrieved refund rule', metadata: { sourceName: 'Policy' }, similarity: 0.9 },
+      ]);
+      ragRetrieval.formatKnowledgeContext.mockReturnValue('Knowledge:\n### Policy\nRetrieved refund rule');
+
+      aiService.complete.mockResolvedValue({
+        id: 'chatcmpl_2',
+        organizationId: orgId,
+        model: 'gpt-4o-mini',
+        content: 'ok',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 2, totalTokens: 12 },
+      });
+
+      await service.chat(userId, orgId, assistantId, {
+        messages: [{ role: 'user', content: 'refund?' }],
+      });
+
+      expect(aiService.complete).toHaveBeenCalledWith(
+        userId,
+        orgId,
+        expect.objectContaining({
+          systemPrompt: expect.stringContaining('Retrieved refund rule'),
+        }),
+      );
     });
 
     it('throws NotFoundException when the assistant does not exist in the organization', async () => {
