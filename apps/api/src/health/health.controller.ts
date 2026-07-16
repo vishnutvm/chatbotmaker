@@ -19,7 +19,7 @@ export class HealthController {
       version:
         process.env.APP_VERSION ||
         process.env.npm_package_version ||
-        '0.2.1',
+        '0.2.2',
     });
   }
 }

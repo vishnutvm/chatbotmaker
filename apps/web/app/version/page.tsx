@@ -14,7 +14,7 @@ function webVersionPayload(): VersionResponse {
 
   return {
     service: 'genie-web',
-    version: process.env.npm_package_version || '0.2.1',
+    version: process.env.npm_package_version || '0.2.2',
     gitSha,
     gitShaShort: shortSha(gitSha),
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
