@@ -2,6 +2,8 @@ import { createAuthClient, createOrganizationsClient } from '@genie/api-client';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { getApiBaseUrl, supabase } from './supabase';
 
+const AUTH_NEXT_STORAGE_KEY = 'genie.auth.next';
+
 export function getAuthCallbackUrl(): string {
   if (typeof window === 'undefined') {
     return '/auth/callback';
@@ -9,7 +11,51 @@ export function getAuthCallbackUrl(): string {
   return `${window.location.origin}/auth/callback`;
 }
 
+/**
+ * Only allow same-origin relative app paths (open-redirect safe).
+ * Accepts dashboard + invite return targets used by auth gates.
+ */
+export function resolveSafeNextPath(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let path = raw.trim();
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    return null;
+  }
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\') || path.includes('://')) {
+    return null;
+  }
+  if (!(path.startsWith('/dashboard') || path.startsWith('/invite'))) {
+    return null;
+  }
+  return path;
+}
+
+export function rememberAuthNextPath(raw: string | null | undefined): void {
+  if (typeof window === 'undefined') return;
+  const safe = resolveSafeNextPath(raw);
+  if (safe) {
+    sessionStorage.setItem(AUTH_NEXT_STORAGE_KEY, safe);
+  } else {
+    sessionStorage.removeItem(AUTH_NEXT_STORAGE_KEY);
+  }
+}
+
+export function consumeAuthNextPath(): string | null {
+  if (typeof window === 'undefined') return null;
+  const stored = sessionStorage.getItem(AUTH_NEXT_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_NEXT_STORAGE_KEY);
+  return resolveSafeNextPath(stored);
+}
+
 export async function signInWithGoogle(): Promise<void> {
+  // Preserve ?next= across the OAuth round-trip (callback URL stays allowlisted).
+  if (typeof window !== 'undefined') {
+    const next = new URLSearchParams(window.location.search).get('next');
+    rememberAuthNextPath(next);
+  }
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -79,7 +125,7 @@ export async function ensureOnboarded(accessToken: string): Promise<void> {
 export async function routeAfterAuth(
   accessToken: string,
   router: AppRouterInstance,
-  options?: { inviteToken?: string | null },
+  options?: { inviteToken?: string | null; nextPath?: string | null },
 ): Promise<string | null> {
   try {
     await ensureOnboarded(accessToken);
@@ -97,7 +143,11 @@ export async function routeAfterAuth(
       }
     }
 
-    router.replace('/dashboard');
+    const next =
+      resolveSafeNextPath(options?.nextPath) ??
+      consumeAuthNextPath() ??
+      '/dashboard';
+    router.replace(next);
     return null;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -41,15 +41,17 @@ export default function Step() {
     }
   }, [hydrated, draft.assistantId, router]);
 
-  async function persist(patch: UpdateAssistantRequest) {
-    if (!draft.assistantId || !activeOrg) return;
+  async function persist(patch: UpdateAssistantRequest): Promise<boolean> {
+    if (!draft.assistantId || !activeOrg) return false;
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not signed in');
       const client = createAssistantsClient(getApiBaseUrl());
       await client.update(token, activeOrg.id, draft.assistantId, patch);
+      return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save changes');
+      return false;
     }
   }
 
@@ -65,14 +67,16 @@ export default function Step() {
       return;
     }
     setSubmitting(true);
-    await persist({
+    const saved = await persist({
       name: draft.name,
       welcomeMessage: draft.welcomeMessage,
       tone: draft.tone,
       instructions: draft.instructions,
     });
     setSubmitting(false);
-    router.push('/dashboard/assistants/new/test');
+    if (saved) {
+      router.push('/dashboard/assistants/new/test');
+    }
   }
 
   return (
