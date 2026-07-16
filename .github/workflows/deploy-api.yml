@@ -1,8 +1,21 @@
+# Deploy NestJS API to Railway from `main`.
+#
+# Primary path: Railway GitHub integration on
+#   repo = vishnutvm/chatbotmaker
+#   branch = main
+#   service = genie-api
+# (configured via `railway service source connect`)
+#
+# Optional GHA direct deploy (push + workflow_dispatch):
+#   vars.ENABLE_RAILWAY_GHA_DEPLOY=true
+#   secrets.RAILWAY_TOKEN (account/project token)
+#   optional vars: RAILWAY_PROJECT_ID, RAILWAY_SERVICE_NAME
+
 name: Deploy API
 
 on:
   push:
-    branches: [main, master, dev]
+    branches: [main]
     paths:
       - 'apps/api/**'
       - 'packages/types/**'
@@ -20,9 +33,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Primary path: Mirror → Railway GitHub auto-deploy (see mirror-deploy-repo.yml).
-    # Optional direct deploy: set ENABLE_RAILWAY_GHA_DEPLOY=true + RAILWAY_TOKEN
-    # and RAILWAY_PROJECT_ID=cc493562-28cd-4b94-b4d7-d1afce1dba24 (genie-api).
     if: vars.ENABLE_RAILWAY_GHA_DEPLOY == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -36,4 +46,4 @@ jobs:
           RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID || 'cc493562-28cd-4b94-b4d7-d1afce1dba24' }}
         run: |
           railway link --project "$RAILWAY_PROJECT_ID" --environment production --service "${{ vars.RAILWAY_SERVICE_NAME || 'genie-api' }}"
-          railway up --service "${{ vars.RAILWAY_SERVICE_NAME || 'genie-api' }}" --detach
+          railway up --service "${{ vars.RAILWAY_SERVICE_NAME || 'genie-api' }}" --detach -y

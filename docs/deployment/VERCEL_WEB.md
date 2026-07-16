@@ -8,7 +8,7 @@ Single Vercel project for marketing, auth, and dashboard.
 |---------|--------|
 | **Project** | `chatbotmaker` |
 | **Production URL** | https://chatbotmaker-dev.vercel.app |
-| **Production Branch** | `dev` |
+| **Production Branch** | `main` |
 | **Root Directory** | `apps/web` |
 | **Framework** | Next.js |
 | **Node.js** | 22.x / 24.x |
@@ -17,12 +17,13 @@ Single Vercel project for marketing, auth, and dashboard.
 
 `apps/web/vercel.json` encodes install/build commands for monorepo builds from the app root.
 
-### Set Production Branch to `dev`
+### Set Production Branch to `main`
 
-Vercel Dashboard → Project **chatbotmaker** → **Settings** → **Git** → **Production Branch** → `dev`.
+Vercel Dashboard → Project **chatbotmaker** → **Settings** → **Git** → **Production Branch** → `main`.
 
-After that, every push to `dev` on `vishnutvm/chatbotmaker` deploys production frontend.
+After that, every push to `main` on `vishnutvm/chatbotmaker` deploys production frontend.
 
+(`dev` is no longer the production deploy branch.)
 
 ## Environment variables
 
@@ -47,15 +48,6 @@ Recommended single-domain setup:
 | `/dashboard/**` | SaaS app |
 
 Optional: add `app.yourdomain.com` as alias; marketing can stay on apex.
-
-## Migration from two Vercel projects
-
-If you previously deployed `apps/marketing` and `apps/dashboard`:
-
-1. Create or repoint one Vercel project to **Root Directory** `apps/web`.
-2. Copy env vars from the old dashboard project (`NEXT_PUBLIC_*`).
-3. Point production domain(s) to the unified project.
-4. Archive or delete the old marketing and dashboard Vercel projects.
 
 ## Local parity
 

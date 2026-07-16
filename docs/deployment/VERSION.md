@@ -1,6 +1,6 @@
 # Version / build identity
 
-Use these endpoints to confirm which deploy is live after pushing to `dev`.
+Use these endpoints to confirm which deploy is live after pushing to `main`.
 
 | Surface | URL |
 |---------|-----|

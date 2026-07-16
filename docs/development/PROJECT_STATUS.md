@@ -93,7 +93,7 @@ Earlier “migration phases” 1–19 complete; phase 20 validation largely done
 - RLS policies not implemented (app-level tenant checks only)
 - StorageModule not wired into AppModule until Knowledge phase
 - Playwright full-stack auth e2e intermittently flaky in CI (not a required merge gate)
-- Railway deploy often needs manual redeploy until `Wait for CI` is off or `ENABLE_RAILWAY_GHA_DEPLOY` + `RAILWAY_TOKEN` are set
+- Deploy path: **`main` only** for web (Vercel) + API (Railway). Mirror repo removed. Confirm Vercel Production Branch = `main`.
 - AI rate limiter is in-memory (Redis later / Phase 10)
 
 ---
@@ -108,7 +108,7 @@ Presentation-only Premium SaaS redesign on `apps/web` (tokens, sidebar, dashboar
 
 ## Next action
 
-1. **PO:** Layer B coverage campaign? Reply **yes** / **no** (optional).  
-2. **Engineering continuum:** Start **Phase 5 — Knowledge (RAG)** — contracts + schema + ingestion pipeline wired into `AIProvider` / chat context.  
-3. Ops hygiene: keep `OPENAI_API_KEY` set on Railway; prefer fixing auto-deploy so manual Railway builds are not required.  
-4. Ship UI redesign commit when PO confirms visual QA.
+1. Confirm Vercel **Production Branch = `main`** (one-time dashboard click if not already).  
+2. **Engineering continuum:** Start **Phase 5 — Knowledge (RAG)** — chunk/embed/pgvector retrieve into assistant chat.  
+3. Keep `OPENAI_API_KEY` set on Railway.  
+4. **PO:** Layer B coverage campaign? Reply **yes** / **no** (optional).

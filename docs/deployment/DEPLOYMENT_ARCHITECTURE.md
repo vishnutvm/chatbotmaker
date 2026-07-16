@@ -1,6 +1,6 @@
 # Deployment Architecture
 
-**Last Updated:** 2026-07-07
+**Last Updated:** 2026-07-16
 
 ---
 
@@ -15,7 +15,7 @@ Cloudflare (DNS/CDN)
 Marketing + Dashboard (Vercel — single app)
     |
     v
-apps/web (port 3000 dev)
+apps/web
           NestJS API (Railway)
                |
        +-------+-------+
@@ -23,6 +23,31 @@ apps/web (port 3000 dev)
        v       v       v
    Supabase  OpenAI  Stripe
 ```
+
+---
+
+## Deploy branch policy (canonical)
+
+**Both frontend and backend deploy from `main` only.**
+
+| Surface | Host | Trigger |
+|---------|------|---------|
+| Web | Vercel project `chatbotmaker` | Push to `main` (Production Branch = `main`) |
+| API | Railway project `genie-api` | Push to `main` (GitHub source = `vishnutvm/chatbotmaker`) |
+
+There is **no** deploy-mirror repo. Do not reintroduce `mirror-deploy-repo.yml`.
+
+```text
+push to `main` (vishnutvm/chatbotmaker)
+  ├─ CI (.github/workflows/ci.yml)
+  ├─ Frontend → Vercel Git auto-deploy → https://chatbotmaker-dev.vercel.app
+  └─ Backend  → Railway Git auto-deploy → https://genie-api-production-4bb3.up.railway.app
+```
+
+Optional GitHub Actions CLI deploys (disabled unless vars are set):
+
+- `Deploy API` — `ENABLE_RAILWAY_GHA_DEPLOY=true` + `RAILWAY_TOKEN`
+- `Deploy Web` — `ENABLE_VERCEL_GHA_DEPLOY=true` + `VERCEL_TOKEN`
 
 ---
 
@@ -45,6 +70,8 @@ See `docs/deployment/VERCEL_WEB.md`.
 
 | Setting | Value |
 |---------|-------|
+| Project | `genie-api` (`cc493562-28cd-4b94-b4d7-d1afce1dba24`) |
+| GitHub source | `vishnutvm/chatbotmaker` @ `main` |
 | Dockerfile | `docker/Dockerfile` |
 | Health check | `/health` |
 | Port | `4000` (or `PORT` env) |
@@ -57,6 +84,10 @@ See `docs/deployment/VERCEL_WEB.md`.
 - `OPENAI_API_KEY` (Phase 4+)
 - `STRIPE_*` (Phase 8+)
 
+Turn off **Wait for CI** on the Railway service if GitHub pushes stay SKIPPED.
+
+Do **not** use Railway project `genie-api-production` for this app — wrong project / missing secrets.
+
 ### Supabase
 
 Create project at [supabase.com](https://supabase.com). Enable:
@@ -67,32 +98,12 @@ Create project at [supabase.com](https://supabase.com). Enable:
 
 ---
 
-## CI/CD
-
-**Deploy branch:** `dev` (also `master` / `main` for CI).
-
-```text
-push to `dev` (vishnutvm/chatbotmaker)
-  ├─ CI (.github/workflows/ci.yml)
-  ├─ Frontend → Vercel project `chatbotmaker` (Git auto-deploy)
-  │              Production URL: https://chatbotmaker-dev.vercel.app
-  │              Set Vercel → Settings → Git → Production Branch = `dev`
-  └─ Backend  → Mirror workflow → vishnuMChanthavila/chatbotmaker-deploy@main
-                 → Railway project **genie-api** (cc493562-28cd-4b94-b4d7-d1afce1dba24)
-                 → https://genie-api-production-4bb3.up.railway.app
-```
-
-Do **not** use Railway project `genie-api-production` for this app — wrong project / missing secrets.
+## CI
 
 `.github/workflows/ci.yml`:
 1. Lint, typecheck, test, build
 2. Docker build with PostgreSQL service container
 3. Health check against container
-
-Deploy triggers:
-- **Vercel:** auto on push to `dev` (configure Production Branch = `dev`)
-- **Railway:** push to `dev` → mirror to deploy repo `main` → Railway GitHub auto-deploy
-- Optional GHA direct deploy: `ENABLE_RAILWAY_GHA_DEPLOY` / `VERCEL_TOKEN` (see workflow files)
 
 ---
 
@@ -109,8 +120,8 @@ pnpm dev
 
 ## Rollback
 
-1. Revert git commit
-2. Re-deploy previous Railway image
+1. Revert git commit on `main`
+2. Re-deploy previous Railway / Vercel deployment
 3. Prisma migrations are forward-only; write down migration for rollback if needed
 
 ---
@@ -118,5 +129,4 @@ pnpm dev
 ## Future: AWS ECS
 
 Trigger: sustained high traffic, custom networking, or compliance requirements.
-
 Migration: same Docker image, different orchestrator. Supabase remains data layer.

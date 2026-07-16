@@ -1,14 +1,20 @@
-# Optional Vercel production deploy from `dev` via CLI.
-# Primary path: Vercel Git integration with Production Branch = `dev`.
+# Deploy Next.js web to Vercel production from `main`.
 #
-# Enable: set repo variable ENABLE_VERCEL_GHA_DEPLOY=true and secret VERCEL_TOKEN.
-# Optional vars: VERCEL_ORG_ID, VERCEL_PROJECT_ID
+# Primary path: Vercel Git integration
+#   Project: chatbotmaker
+#   Production Branch: main
+#   Root Directory: apps/web
+#
+# Optional GHA CLI deploy (workflow_dispatch / push):
+#   vars.ENABLE_VERCEL_GHA_DEPLOY=true
+#   secrets.VERCEL_TOKEN
+#   optional vars: VERCEL_ORG_ID, VERCEL_PROJECT_ID
 
 name: Deploy Web
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
     paths:
       - 'apps/web/**'
       - 'packages/types/**'
