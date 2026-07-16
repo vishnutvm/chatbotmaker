@@ -15,9 +15,9 @@
 
 ## Knowledge ingest
 
-- New sources start as `pending`, then `ready` / `failed` after ingest
+- New sources start as `pending` (HTTP returns immediately); background ingest flips to `ready` / `failed`
 - Failed URL fetch → `failed` (no embed attempt)
-- Chat prefers top-k similar chunks; if none, falls back to truncated ready-source dump
+- Chat prefers top-k similar chunks (min similarity 0.25); if none, falls back to truncated ready-source dump
 
 ## Out of scope (next)
 

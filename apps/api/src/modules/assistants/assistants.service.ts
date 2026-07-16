@@ -191,7 +191,8 @@ export class AssistantsService {
         content: content.slice(0, MAX_KNOWLEDGE_CONTENT_CHARS),
         url: null,
       });
-      return this.toKnowledgeDto(await this.ingestReadySource(userId, created));
+      this.scheduleIngest(userId, created);
+      return this.toKnowledgeDto(created);
     }
 
     const url = dto.url?.trim();
@@ -210,11 +211,11 @@ export class AssistantsService {
       url,
     });
 
-    if (status !== 'ready' || !content) {
-      return this.toKnowledgeDto(created);
+    if (status === 'ready' && content) {
+      this.scheduleIngest(userId, created);
     }
 
-    return this.toKnowledgeDto(await this.ingestReadySource(userId, created));
+    return this.toKnowledgeDto(created);
   }
 
   async listKnowledge(
@@ -283,6 +284,19 @@ export class AssistantsService {
     });
 
     return { ...result, assistantId };
+  }
+
+  /**
+   * Fire-and-forget chunk/embed so HTTP returns quickly with `pending`.
+   * Status flips to ready|failed when ingest finishes.
+   */
+  private scheduleIngest(userId: string, source: KnowledgeSourceRow): void {
+    void this.ingestReadySource(userId, source).catch((error) => {
+      this.logger.warn('Background knowledge ingest failed', {
+        knowledgeSourceId: source.id,
+        name: error instanceof Error ? error.name : 'unknown',
+      });
+    });
   }
 
   /**

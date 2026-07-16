@@ -227,7 +227,7 @@ describe('AssistantsService', () => {
       expect(repository.createKnowledgeSource).not.toHaveBeenCalled();
     });
 
-    it('stores text knowledge, ingests embeddings, and returns ready', async () => {
+    it('stores text knowledge as pending and schedules ingest', async () => {
       repository.findById.mockResolvedValue(baseAssistant as never);
       repository.createKnowledgeSource.mockResolvedValue({
         id: 'ks-1',
@@ -260,10 +260,14 @@ describe('AssistantsService', () => {
         content: 'Refunds within 30 days.',
       });
 
-      expect(result.status).toBe('ready');
+      expect(result.status).toBe('pending');
       expect(repository.createKnowledgeSource).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'text', status: 'pending' }),
       );
+
+      await Promise.resolve();
+      await Promise.resolve();
+
       expect(ragIngestion.ingestKnowledgeSource).toHaveBeenCalledWith(
         expect.objectContaining({
           knowledgeSourceId: 'ks-1',
@@ -273,7 +277,7 @@ describe('AssistantsService', () => {
       expect(repository.updateKnowledgeSource).toHaveBeenCalledWith('ks-1', { status: 'ready' });
     });
 
-    it('fetches URL content, ingests embeddings, and marks the source ready', async () => {
+    it('fetches URL content, returns pending, and schedules ingest', async () => {
       repository.findById.mockResolvedValue(baseAssistant as never);
       repository.createKnowledgeSource.mockImplementation((data) =>
         Promise.resolve({
@@ -312,7 +316,7 @@ describe('AssistantsService', () => {
         url: 'https://example.com/pricing',
       });
 
-      expect(result.status).toBe('ready');
+      expect(result.status).toBe('pending');
       expect(repository.createKnowledgeSource).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'url',
@@ -320,6 +324,9 @@ describe('AssistantsService', () => {
           content: expect.stringContaining('Plans start at $10/mo.'),
         }),
       );
+
+      await Promise.resolve();
+      await Promise.resolve();
       expect(ragIngestion.ingestKnowledgeSource).toHaveBeenCalled();
     });
 

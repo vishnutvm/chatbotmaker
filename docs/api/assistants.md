@@ -71,8 +71,8 @@ or
 ```
 
 URL: server fetches page, strips tags, stores text (max ~100k chars).  
-Ingest: chunk + embed into `document_chunks` (MVP aliases: `knowledge_base_id` = assistant id, `document_id` = source id).  
-Status lifecycle: `pending` → `ready` | `failed`.
+Ingest: returns `pending` immediately, then chunk + embed in the background into `document_chunks` (MVP aliases: `knowledge_base_id` = assistant id, `document_id` = source id).  
+Status lifecycle: `pending` → `ready` | `failed` (poll GET knowledge / assistant detail).
 
 **201** `KnowledgeSourceDto`
 

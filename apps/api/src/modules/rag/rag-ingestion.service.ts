@@ -33,11 +33,11 @@ export class RagIngestionService {
     try {
       const chunks = chunkText(content);
       if (chunks.length === 0) {
-        await this.chunksRepository.deleteByKnowledgeSource(knowledgeSourceId);
+        await this.chunksRepository.deleteByKnowledgeSource(organizationId, knowledgeSourceId);
         return 'failed';
       }
 
-      await this.chunksRepository.deleteByKnowledgeSource(knowledgeSourceId);
+      await this.chunksRepository.deleteByKnowledgeSource(organizationId, knowledgeSourceId);
 
       const texts = chunks.map((c) => c.content);
       const embeddings: number[][] = [];
@@ -80,7 +80,7 @@ export class RagIngestionService {
         name: error instanceof Error ? error.name : 'unknown',
       });
       try {
-        await this.chunksRepository.deleteByKnowledgeSource(knowledgeSourceId);
+        await this.chunksRepository.deleteByKnowledgeSource(organizationId, knowledgeSourceId);
       } catch {
         // best-effort
       }

@@ -9,10 +9,10 @@
 
 Phase 5 MVP wires **assistant-scoped** RAG for text + URL knowledge:
 
-1. `POST …/knowledge` creates a `knowledge_sources` row (`pending`)
-2. `RagIngestionService` chunks content → `AiService.embed` → inserts `document_chunks`
+1. `POST …/knowledge` creates a `knowledge_sources` row (`pending`) and returns immediately
+2. Background: `RagIngestionService` chunks content → `AiService.embed` → batched insert into `document_chunks`
 3. Status → `ready` | `failed`
-4. Assistant chat embeds the latest user message → tenant-filtered similarity search → prompt context
+4. Assistant chat embeds the latest user message → tenant-filtered similarity search (min 0.25) → prompt context
 5. If no chunks: **fallback** to truncated dump of ready source contents (pre-RAG behavior)
 
 **Out of scope for this MVP:** file upload, site crawl/sitemap, separate `knowledge_bases` tables, HNSW/IVFFlat indexes, background re-index jobs.

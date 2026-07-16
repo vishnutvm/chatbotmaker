@@ -22,13 +22,21 @@ export type InsertChunkInput = {
   tokenCount: number;
 };
 
+/** Soft floor — below this, prefer dump fallback over weak matches. */
+export const RAG_MIN_SIMILARITY = 0.25;
+
 @Injectable()
 export class DocumentChunksRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async deleteByKnowledgeSource(knowledgeSourceId: string): Promise<void> {
+  async deleteByKnowledgeSource(
+    organizationId: string,
+    knowledgeSourceId: string,
+  ): Promise<void> {
     await this.prisma.$executeRaw`
-      DELETE FROM document_chunks WHERE document_id = ${knowledgeSourceId}::uuid
+      DELETE FROM document_chunks
+      WHERE organization_id = ${organizationId}::uuid
+        AND document_id = ${knowledgeSourceId}::uuid
     `;
   }
 
@@ -37,9 +45,26 @@ export class DocumentChunksRepository {
       return;
     }
 
-    for (const chunk of chunks) {
-      const vectorLiteral = `[${chunk.embedding.join(',')}]`;
-      const metadataJson = JSON.stringify(chunk.metadata);
+    // Batch multi-row inserts to keep latency bounded (avoid 1 RTT per chunk).
+    const BATCH = 40;
+    for (let i = 0; i < chunks.length; i += BATCH) {
+      const batch = chunks.slice(i, i + BATCH);
+      const values = batch.map(
+        (chunk) => Prisma.sql`(
+          ${chunk.organizationId}::uuid,
+          ${chunk.assistantId}::uuid,
+          ${chunk.knowledgeSourceId}::uuid,
+          ${chunk.content},
+          ${JSON.stringify(chunk.metadata)}::jsonb,
+          ${`[${chunk.embedding.join(',')}]`}::vector,
+          ${chunk.embeddingModel},
+          ${chunk.embeddingVersion},
+          ${chunk.tokenCount},
+          ${chunk.chunkIndex},
+          NOW(),
+          NOW()
+        )`,
+      );
 
       await this.prisma.$executeRaw`
         INSERT INTO document_chunks (
@@ -55,20 +80,7 @@ export class DocumentChunksRepository {
           chunk_index,
           created_at,
           updated_at
-        ) VALUES (
-          ${chunk.organizationId}::uuid,
-          ${chunk.assistantId}::uuid,
-          ${chunk.knowledgeSourceId}::uuid,
-          ${chunk.content},
-          ${metadataJson}::jsonb,
-          ${vectorLiteral}::vector,
-          ${chunk.embeddingModel},
-          ${chunk.embeddingVersion},
-          ${chunk.tokenCount},
-          ${chunk.chunkIndex},
-          NOW(),
-          NOW()
-        )
+        ) VALUES ${Prisma.join(values)}
         ON CONFLICT (document_id, chunk_index) DO UPDATE SET
           content = EXCLUDED.content,
           metadata = EXCLUDED.metadata,
@@ -90,8 +102,10 @@ export class DocumentChunksRepository {
     assistantId: string;
     queryEmbedding: number[];
     topK: number;
+    minSimilarity?: number;
   }): Promise<RetrievedChunk[]> {
     const vectorLiteral = `[${input.queryEmbedding.join(',')}]`;
+    const minSimilarity = input.minSimilarity ?? RAG_MIN_SIMILARITY;
     const rows = await this.prisma.$queryRaw<
       Array<{
         id: string;
@@ -106,6 +120,7 @@ export class DocumentChunksRepository {
       WHERE organization_id = ${input.organizationId}::uuid
         AND knowledge_base_id = ${input.assistantId}::uuid
         AND embedding IS NOT NULL
+        AND (1 - (embedding <=> ${vectorLiteral}::vector)) >= ${minSimilarity}
       ORDER BY embedding <=> ${vectorLiteral}::vector
       LIMIT ${input.topK}
     `;
@@ -118,11 +133,15 @@ export class DocumentChunksRepository {
     }));
   }
 
-  async countByKnowledgeSource(knowledgeSourceId: string): Promise<number> {
+  async countByKnowledgeSource(
+    organizationId: string,
+    knowledgeSourceId: string,
+  ): Promise<number> {
     const rows = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(*)::bigint AS count
       FROM document_chunks
-      WHERE document_id = ${knowledgeSourceId}::uuid
+      WHERE organization_id = ${organizationId}::uuid
+        AND document_id = ${knowledgeSourceId}::uuid
     `;
     return Number(rows[0]?.count ?? 0);
   }
