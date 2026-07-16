@@ -1,6 +1,6 @@
 # Project Status — Genie MVP
 
-**Last Updated:** 2026-07-15
+**Last Updated:** 2026-07-16
 
 ---
 
@@ -12,8 +12,8 @@
 | 2 | Authentication | Done | Supabase Auth + Nest onboard / session / JWKS |
 | 3 | Organizations | Done | Multi-org membership, Team UI, email invitations, org switcher. Docs: `docs/features/ORGANIZATIONS.md`, `docs/api/organizations.md`, `docs/database/MULTI_TENANCY.md` |
 | 4 | AI platform | Done (U1) | LLM layer + org-scoped chat JSON/SSE live on Railway. Docs: `docs/features/AI_PLATFORM.md`, `docs/api/ai-chat.md`, ADR 0002 |
-| 5 | Knowledge (RAG) | Next | Upload → chunk → embed → retrieve → inject into AI chat |
-| 6 | Assistants | Backlog | CRUD, playground UI wired to real AI |
+| 5 | Knowledge (RAG) | Partial MVP | Text + URL knowledge on assistants (no embeddings yet). Full chunk/embed/retrieve next. |
+| 6 | Assistants | In progress (wizard E2E) | CRUD + Create→Teach→Customize→Test→Deploy against real API. Docs: `docs/api/assistants.md`, `docs/features/ASSISTANTS.md` |
 | 7–10 | Widget → Billing → Analytics → Production | Backlog | Per `Docs/05-mvp-roadmap.md` |
 
 ---
@@ -69,6 +69,8 @@ Auth, org switching, and Nest/Supabase flows unchanged — visual/port only.
 
 | Topic | Path |
 |-------|------|
+| Assistants API | `docs/api/assistants.md` |
+| Assistants feature | `docs/features/ASSISTANTS.md` |
 | AI API contract | `docs/api/ai-chat.md` |
 | AI architecture | `docs/architecture/AI_PLATFORM_ARCHITECTURE.md` |
 | AI feature notes | `docs/features/AI_PLATFORM.md` |

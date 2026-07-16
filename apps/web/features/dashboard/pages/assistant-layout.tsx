@@ -6,9 +6,9 @@ import type { ReactNode } from 'react';
 import { TopHeader } from '@/components/shell/TopHeader';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { useAssistant } from '@/lib/store';
-import { Bot, PlayCircle, Rocket, MoreHorizontal } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AssistantDetailProvider, useAssistantDetail } from '@/features/dashboard/assistant-detail-context';
+import { Bot, PlayCircle, Rocket, MoreHorizontal, Loader2 } from 'lucide-react';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,14 +30,42 @@ const tabs = [
   { id: 'settings', label: 'Settings' },
 ] as const;
 
+const statusTone = { live: 'success', draft: 'neutral', paused: 'warning', processing: 'info' } as const;
+
 export function AssistantWorkspace({ children }: { children: ReactNode }) {
   const params = useParams();
   const id = String(params.assistantId ?? '');
-  const a = useAssistant(id);
+
+  return (
+    <AssistantDetailProvider assistantId={id}>
+      <AssistantWorkspaceInner id={id}>{children}</AssistantWorkspaceInner>
+    </AssistantDetailProvider>
+  );
+}
+
+function AssistantWorkspaceInner({ id, children }: { id: string; children: ReactNode }) {
+  const { assistant: a, loading, error } = useAssistantDetail();
   const pathname = usePathname();
 
+  if (loading && !a) {
+    return (
+      <div className="flex items-center justify-center gap-2 p-16 text-sm font-semibold text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading assistant…
+      </div>
+    );
+  }
+
   if (!a) {
-    return <div className="p-12 text-center text-sm font-semibold text-muted-foreground">Assistant not found.</div>;
+    return (
+      <div className="p-12 text-center text-sm font-semibold text-muted-foreground">
+        {error ?? 'Assistant not found.'}
+        <div className="mt-4">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/dashboard/assistants">Back to assistants</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -66,16 +94,10 @@ export function AssistantWorkspace({ children }: { children: ReactNode }) {
                   <h1 className="truncate text-xl font-bold tracking-tight text-foreground leading-tight">
                     {a.name}
                   </h1>
-                  <StatusBadge
-                    tone={
-                      a.status === 'live' ? 'success' : a.status === 'draft' ? 'neutral' : 'warning'
-                    }
-                  >
-                    {a.status}
-                  </StatusBadge>
+                  <StatusBadge tone={statusTone[a.status] ?? 'neutral'}>{a.status}</StatusBadge>
                 </div>
                 <div className="text-xs text-muted-foreground/80 mt-0.75 font-medium">
-                  Updated {a.lastUpdated} · <span className="font-semibold text-foreground">{a.conversations.toLocaleString()}</span> conversations
+                  Updated {formatRelativeTime(a.updatedAt)} · <span className="font-semibold text-foreground">{a.conversationCount.toLocaleString()}</span> conversations
                 </div>
               </div>
             </div>

@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { K_WIZARD } from "@/lib/store";
+import type { AssistantPurpose, AssistantTone } from "@genie/types";
 
-export type Tone = "friendly" | "professional" | "helpful" | "concise" | "custom";
+export type Tone = AssistantTone;
 
 export interface AssistantDraft {
+  assistantId: string | null;
   name: string;
-  purpose: string;
+  purpose: AssistantPurpose;
   welcomeMessage: string;
   tone: Tone;
   instructions: string;
@@ -22,8 +24,9 @@ interface WizardCtx {
 }
 
 const initialDraft: AssistantDraft = {
+  assistantId: null,
   name: "",
-  purpose: "support",
+  purpose: "customer_support",
   welcomeMessage: "Hi! I'm here to help. What can I answer for you today?",
   tone: "friendly",
   instructions: "Be concise, warm and always link to a source when possible. If you don't know the answer, offer to connect a human.",

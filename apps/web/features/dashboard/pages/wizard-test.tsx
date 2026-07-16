@@ -1,23 +1,24 @@
 'use client';
 
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createAssistantsClient } from "@genie/api-client";
+import type { AssistantChatMessage } from "@genie/types";
+import { getAccessToken, getApiBaseUrl } from "@/lib/supabase";
+import { useAuth } from "@/providers/auth-provider";
 import { useWizard } from "@/lib/wizard-context";
 import { WizardFooter } from "@/features/dashboard/wizard-footer";
 import { Button } from "@/components/ui/button";
-import { Send, Sparkles, BookOpen, Wand2, FileText } from "lucide-react";
+import { Send, Sparkles, BookOpen, Wand2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 
 
 interface Msg {
   role: "user" | "assistant";
   content: string;
-  sources?: { title: string; url: string }[];
 }
-
-const seed: Msg[] = [
-  { role: "assistant", content: "Hi! I'm here to help. What can I answer for you today?" },
-];
 
 const suggestions = [
   "What are your business hours?",
@@ -26,30 +27,46 @@ const suggestions = [
 ];
 
 export default function Step() {
-  const { draft } = useWizard();
-  const [messages, setMessages] = useState<Msg[]>(seed);
+  const { draft, hydrated } = useWizard();
+  const { activeOrg } = useAuth();
+  const router = useRouter();
+  const [messages, setMessages] = useState<Msg[]>([
+    { role: "assistant", content: draft.welcomeMessage || "Hi! I'm here to help. What can I answer for you today?" },
+  ]);
   const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const send = (text?: string) => {
+  useEffect(() => {
+    if (hydrated && !draft.assistantId) {
+      toast.error('Create your assistant first.');
+      router.replace('/dashboard/assistants/new/create');
+    }
+  }, [hydrated, draft.assistantId, router]);
+
+  async function send(text?: string) {
     const q = (text ?? input).trim();
-    if (!q) return;
+    if (!q || sending) return;
+    if (!draft.assistantId || !activeOrg) {
+      toast.error('Create your assistant first.');
+      return;
+    }
     setInput("");
-    setMessages((m) => [...m, { role: "user", content: q }]);
-    setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content:
-            "Great question. Based on your knowledge base, here's what I can tell you: our team is available 24/7 through this chat, and human agents are online Monday–Friday, 9am–6pm PT.",
-          sources: [
-            { title: "Contact & support hours", url: "/help/hours" },
-            { title: "Response time SLAs", url: "/help/sla" },
-          ],
-        },
-      ]);
-    }, 600);
-  };
+    const nextMessages: Msg[] = [...messages, { role: "user", content: q }];
+    setMessages(nextMessages);
+    setSending(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not signed in');
+      const client = createAssistantsClient(getApiBaseUrl());
+      const history: AssistantChatMessage[] = nextMessages.map((m) => ({ role: m.role, content: m.content }));
+      const res = await client.chat(token, activeOrg.id, draft.assistantId, { messages: history });
+      setMessages((m) => [...m, { role: "assistant", content: res.content }]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'The assistant could not respond');
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[1080px] px-8 py-10">
@@ -69,24 +86,20 @@ export default function Step() {
               <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
                 <div className={m.role === "user" ? "max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground" : "max-w-[80%]"}>
                   {m.role === "assistant" ? (
-                    <div>
-                      <div className="rounded-2xl rounded-bl-sm border border-border bg-surface px-4 py-2.5 text-sm text-foreground">
-                        {m.content}
-                      </div>
-                      {m.sources && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {m.sources.map((s) => (
-                            <span key={s.url} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                              <FileText className="h-3 w-3" /> {s.title}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                    <div className="rounded-2xl rounded-bl-sm border border-border bg-surface px-4 py-2.5 text-sm text-foreground">
+                      {m.content}
                     </div>
                   ) : m.content}
                 </div>
               </div>
             ))}
+            {sending && (
+              <div className="max-w-[80%]">
+                <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm border border-border bg-surface px-4 py-2.5 text-sm text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…
+                </div>
+              </div>
+            )}
           </div>
           {messages.length === 1 && (
             <div className="border-t border-border px-4 py-3">
@@ -107,10 +120,11 @@ export default function Step() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
                 placeholder="Ask a question…"
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                disabled={sending}
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
               />
-              <Button size="icon" className="h-8 w-8" onClick={() => send()} aria-label="Send">
-                <Send className="h-3.5 w-3.5" />
+              <Button size="icon" className="h-8 w-8" onClick={() => send()} disabled={sending || !input.trim()} aria-label="Send">
+                {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
               </Button>
             </div>
           </div>
@@ -120,8 +134,12 @@ export default function Step() {
           <div className="rounded-xl border border-border bg-surface p-4">
             <div className="text-sm font-semibold text-foreground">Improve as you go</div>
             <div className="mt-3 space-y-1.5">
-              <Button variant="outline" size="sm" className="w-full justify-start"><Wand2 className="mr-2 h-3.5 w-3.5" /> Improve instructions</Button>
-              <Button variant="outline" size="sm" className="w-full justify-start"><BookOpen className="mr-2 h-3.5 w-3.5" /> Add more knowledge</Button>
+              <Button variant="outline" size="sm" className="w-full justify-start" disabled title="Coming soon">
+                <Wand2 className="mr-2 h-3.5 w-3.5" /> Improve instructions
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start" disabled title="Coming soon">
+                <BookOpen className="mr-2 h-3.5 w-3.5" /> Add more knowledge
+              </Button>
             </div>
           </div>
           <div className="rounded-xl border border-border bg-primary-subtle/40 p-4">

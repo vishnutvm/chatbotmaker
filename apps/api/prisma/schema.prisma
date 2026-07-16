@@ -21,6 +21,40 @@ enum InvitationStatus {
   expired
 }
 
+enum AssistantStatus {
+  draft
+  live
+  paused
+}
+
+enum AssistantPurpose {
+  customer_support
+  sales
+  product_expert
+  documentation
+  lead_generation
+  custom
+}
+
+enum AssistantTone {
+  friendly
+  professional
+  helpful
+  concise
+  custom
+}
+
+enum KnowledgeSourceType {
+  text
+  url
+}
+
+enum KnowledgeSourceStatus {
+  pending
+  ready
+  failed
+}
+
 model User {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   supabaseUserId String   @unique @map("supabase_user_id") @db.Uuid
@@ -51,6 +85,7 @@ model Organization {
   members       OrganizationMember[]
   invitations   OrganizationInvitation[]
   aiUsageEvents AiUsageEvent[]
+  assistants    Assistant[]
 
   @@index([ownerId])
   @@map("organizations")
@@ -114,4 +149,45 @@ model AiUsageEvent {
   @@index([organizationId, createdAt])
   @@index([userId, createdAt])
   @@map("ai_usage_events")
+}
+
+model Assistant {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  name           String
+  description    String           @default("")
+  purpose        AssistantPurpose @default(custom)
+  status         AssistantStatus  @default(draft)
+  welcomeMessage String           @default("") @map("welcome_message")
+  tone           AssistantTone    @default(friendly)
+  instructions   String           @default("")
+  appearance     Json             @default("{}")
+  deployedAt     DateTime?        @map("deployed_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  knowledgeSources  KnowledgeSource[]
+
+  @@index([organizationId, updatedAt])
+  @@map("assistants")
+}
+
+model KnowledgeSource {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  assistantId    String                @map("assistant_id") @db.Uuid
+  type           KnowledgeSourceType
+  name           String
+  status         KnowledgeSourceStatus @default(pending)
+  content        String?
+  url            String?
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+
+  @@index([assistantId])
+  @@index([organizationId, assistantId])
+  @@map("knowledge_sources")
 }
