@@ -138,8 +138,9 @@ export class CreateKnowledgeSourceDto {
 }
 
 export class AssistantChatMessageDto {
-  @IsIn(['user', 'assistant', 'system'])
-  role!: 'user' | 'assistant' | 'system';
+  /** Client may only send user/assistant turns — system prompt is server-owned. */
+  @IsIn(['user', 'assistant'])
+  role!: 'user' | 'assistant';
 
   @IsString()
   @MinLength(1)

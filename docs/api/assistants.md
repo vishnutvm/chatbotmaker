@@ -84,13 +84,13 @@ URL: server fetches page, strips tags, stores text (max ~100k chars). Status `re
 
 ### POST `/organizations/:organizationId/assistants/:assistantId/deploy`
 
-Sets `status: live`, `deployedAt: now`.
+Sets `status: live`, `deployedAt: now`. Requires **owner** or **admin**.
 
 **200** `AssistantDto`
 
 ### POST `/organizations/:organizationId/assistants/:assistantId/chat`
 
-Playground / Test step. Builds system prompt from assistant instructions + welcome context + knowledge contents; calls AI provider.
+Playground / Test step. Builds system prompt from assistant instructions + welcome context + knowledge contents; calls AI provider. Client messages may only use `user` / `assistant` roles (system prompt is server-owned).
 
 ```json
 {

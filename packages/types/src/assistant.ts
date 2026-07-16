@@ -87,7 +87,8 @@ export interface UpdateAssistantRequest {
 }
 
 export interface AssistantChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  /** Client turns only — assistant system prompt is assembled server-side. */
+  role: 'user' | 'assistant';
   content: string;
 }
 

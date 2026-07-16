@@ -96,11 +96,15 @@ export class AssistantsService {
     assistantId: string,
     dto: UpdateAssistantDto,
   ): Promise<AssistantDto> {
-    await this.organizationsService.requireMembership(userId, organizationId);
+    const { membership } = await this.organizationsService.requireMembership(userId, organizationId);
 
     const existing = await this.assistantsRepository.findById(organizationId, assistantId);
     if (!existing) {
       throw new NotFoundException('Assistant not found');
+    }
+
+    if (dto.status !== undefined) {
+      this.requireManager(membership.role as OrganizationRole);
     }
 
     const data: Prisma.AssistantUpdateInput = {};
@@ -110,7 +114,12 @@ export class AssistantsService {
     if (dto.welcomeMessage !== undefined) data.welcomeMessage = dto.welcomeMessage.trim();
     if (dto.tone !== undefined) data.tone = dto.tone;
     if (dto.instructions !== undefined) data.instructions = dto.instructions.trim();
-    if (dto.status !== undefined) data.status = dto.status;
+    if (dto.status !== undefined) {
+      data.status = dto.status;
+      if (dto.status === 'live' && !existing.deployedAt) {
+        data.deployedAt = new Date();
+      }
+    }
     if (dto.appearance !== undefined) {
       data.appearance = {
         ...this.toAppearance(existing.appearance),
@@ -135,7 +144,8 @@ export class AssistantsService {
   }
 
   async deploy(userId: string, organizationId: string, assistantId: string): Promise<AssistantDto> {
-    await this.organizationsService.requireMembership(userId, organizationId);
+    const { membership } = await this.organizationsService.requireMembership(userId, organizationId);
+    this.requireManager(membership.role as OrganizationRole);
 
     const existing = await this.assistantsRepository.findById(organizationId, assistantId);
     if (!existing) {
@@ -244,9 +254,11 @@ export class AssistantsService {
     }
 
     const systemPrompt = this.buildSystemPrompt(assistant);
+    // Defense in depth: never forward client `system` roles even if validation regresses.
+    const messages = dto.messages.filter((m) => m.role === 'user' || m.role === 'assistant');
     const result = await this.aiService.complete(userId, organizationId, {
       systemPrompt,
-      messages: dto.messages,
+      messages,
     });
 
     return { ...result, assistantId };
@@ -330,7 +342,18 @@ export class AssistantsService {
         return { content: '', status: 'failed' };
       }
 
-      const html = await response.text();
+      const contentLengthHeader = response.headers?.get?.('content-length');
+      const contentLength = Number(contentLengthHeader ?? '0');
+      if (Number.isFinite(contentLength) && contentLength > MAX_KNOWLEDGE_CONTENT_CHARS * 4) {
+        this.logger.warn('Knowledge URL fetch rejected oversized Content-Length');
+        return { content: '', status: 'failed' };
+      }
+
+      const html = await this.readResponseTextCapped(response, MAX_KNOWLEDGE_CONTENT_CHARS * 4);
+      if (html === null) {
+        this.logger.warn('Knowledge URL fetch exceeded body size cap');
+        return { content: '', status: 'failed' };
+      }
       const text = this.stripHtml(html);
       if (!text) {
         return { content: '', status: 'failed' };
@@ -398,6 +421,35 @@ export class AssistantsService {
     }
 
     return true;
+  }
+
+  /** Reads response body up to `maxChars`; returns null if the stream exceeds the cap. */
+  private async readResponseTextCapped(response: Response, maxChars: number): Promise<string | null> {
+    try {
+      if (response.body && typeof response.body.getReader === 'function') {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let result = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          result += decoder.decode(value, { stream: true });
+          if (result.length > maxChars) {
+            await reader.cancel();
+            return null;
+          }
+        }
+
+        result += decoder.decode();
+        return result.length > maxChars ? null : result;
+      }
+
+      const text = await response.text();
+      return text.length > maxChars ? null : text;
+    } catch {
+      return null;
+    }
   }
 
   private stripHtml(html: string): string {

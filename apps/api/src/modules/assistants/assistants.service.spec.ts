@@ -167,7 +167,23 @@ describe('AssistantsService', () => {
   });
 
   describe('deploy', () => {
+    it('forbids members from deploying an assistant', async () => {
+      organizationsService.requireMembership.mockResolvedValue({
+        organization: { id: orgId },
+        membership: { role: 'member' },
+      });
+
+      await expect(service.deploy(userId, orgId, assistantId)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
     it('sets status to live and stamps deployedAt', async () => {
+      organizationsService.requireMembership.mockResolvedValue({
+        organization: { id: orgId },
+        membership: { role: 'owner' },
+      });
       repository.findById.mockResolvedValue(baseAssistant as never);
       repository.update.mockResolvedValue({
         ...baseAssistant,
