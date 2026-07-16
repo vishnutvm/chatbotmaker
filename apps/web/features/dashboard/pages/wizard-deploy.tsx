@@ -1,32 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createAssistantsClient } from '@genie/api-client';
+import { getAccessToken, getApiBaseUrl } from '@/lib/supabase';
+import { useAuth } from '@/providers/auth-provider';
 import { useWizard } from '@/lib/wizard-context';
 import { WizardFooter } from '@/features/dashboard/wizard-footer';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Globe, Link as LinkIcon, Code2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { addAssistant, addKnowledge } from '@/lib/store';
-import { purposes } from '@/lib/mock/data';
 
 type Method = 'website' | 'share' | 'api';
 
-function slugify(name: string) {
-  return (name || 'acme').toLowerCase().replace(/\s+/g, '-');
-}
-
 export default function Step() {
-  const { draft, reset } = useWizard();
+  const { draft, reset, hydrated } = useWizard();
+  const { activeOrg } = useAuth();
   const [method, setMethod] = useState<Method>('website');
   const [copied, setCopied] = useState(false);
+  const [deploying, setDeploying] = useState(false);
   const router = useRouter();
-  const slug = slugify(draft.name);
-  const shareUrl = `https://chat.genie.dev/${slug}`;
+
+  useEffect(() => {
+    if (hydrated && !draft.assistantId) {
+      toast.error('Create your assistant first.');
+      router.replace('/dashboard/assistants/new/create');
+    }
+  }, [hydrated, draft.assistantId, router]);
+
+  const assistantId = draft.assistantId ?? '';
+  const shareUrl = `https://chat.genie.dev/${assistantId}`;
   const snippet = `<script async src="https://cdn.genie.dev/widget.js"
-  data-assistant="${slug}"></script>`;
-  const curl = `curl https://api.genie.dev/v1/assistants/${slug}/chat \\
+  data-assistant="${assistantId}"></script>`;
+  const curl = `curl https://api.genie.dev/v1/assistants/${assistantId}/chat \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -d '{"message":"How do I upgrade?"}'`;
 
@@ -41,36 +48,28 @@ export default function Step() {
     }
   };
 
-  const finish = () => {
-    const purpose = purposes.find((p) => p.id === draft.purpose);
-    const created = addAssistant({
-      name: draft.name || 'Untitled assistant',
-      description: purpose?.description ?? '',
-      purpose: purpose?.title ?? 'Custom Assistant',
-      status: 'live',
-    });
-    if (draft.knowledgeUrl.trim() && draft.importedPages > 0) {
-      try {
-        const host = new URL(draft.knowledgeUrl).host || draft.knowledgeUrl;
-        addKnowledge({
-          assistantId: created.id,
-          name: host,
-          type: 'website',
-          pages: draft.importedPages,
-        });
-      } catch {
-        addKnowledge({
-          assistantId: created.id,
-          name: draft.knowledgeUrl,
-          type: 'website',
-          pages: draft.importedPages,
-        });
-      }
+  async function finish() {
+    if (!draft.assistantId || !activeOrg) {
+      toast.error('Create your assistant first.');
+      router.push('/dashboard/assistants/new/create');
+      return;
     }
-    toast.success(`${created.name} deployed`);
-    reset();
-    router.push(`/dashboard/assistants/${created.id}/overview`);
-  };
+    setDeploying(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not signed in');
+      const client = createAssistantsClient(getApiBaseUrl());
+      const deployed = await client.deploy(token, activeOrg.id, draft.assistantId);
+      toast.success(`${deployed.name} is live`);
+      const id = deployed.id;
+      reset();
+      router.push(`/dashboard/assistants/${id}/overview`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not deploy your assistant');
+    } finally {
+      setDeploying(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[880px] px-8 py-10 animate-in fade-in duration-300">
@@ -176,7 +175,8 @@ export default function Step() {
 
       <WizardFooter
         backTo="/dashboard/assistants/new/test"
-        nextLabel="Finish setup"
+        nextLabel={deploying ? 'Deploying…' : 'Finish setup'}
+        nextDisabled={deploying}
         onNext={finish}
       />
     </div>

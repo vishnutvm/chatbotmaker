@@ -2,7 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createAssistantsClient } from '@genie/api-client';
+import type { AssistantDto } from '@genie/types';
+import { getAccessToken, getApiBaseUrl } from '@/lib/supabase';
+import { useAuth } from '@/providers/auth-provider';
 import { TopHeader } from '@/components/shell/TopHeader';
 import { PageHeader } from '@/components/common/PageHeader';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -16,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { deleteAssistant, useAssistants } from '@/lib/store';
-import { Bot, Plus, Search, MoreHorizontal } from 'lucide-react';
+import { formatRelativeTime } from '@/lib/utils';
+import { Bot, Plus, Search, MoreHorizontal, Loader2, AlertCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,12 +30,57 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
+const statusTone = { live: 'success', draft: 'neutral', paused: 'warning', processing: 'info' } as const;
+
 export default function AssistantsList() {
-  const assistants = useAssistants();
+  const { activeOrg } = useAuth();
+  const orgId = activeOrg?.id ?? null;
   const router = useRouter();
+  const [assistants, setAssistants] = useState<AssistantDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string>('all');
   const [sort, setSort] = useState<string>('updated');
+
+  const load = useCallback(async () => {
+    if (!orgId) {
+      setAssistants([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not signed in');
+      const client = createAssistantsClient(getApiBaseUrl());
+      const res = await client.list(token, orgId);
+      setAssistants(res.assistants);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load assistants');
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function handleDelete(assistant: AssistantDto) {
+    if (!orgId) return;
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not signed in');
+      const client = createAssistantsClient(getApiBaseUrl());
+      await client.delete(token, orgId, assistant.id);
+      setAssistants((list) => list.filter((a) => a.id !== assistant.id));
+      toast.success(`Deleted ${assistant.name}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not delete this assistant');
+    }
+  }
 
   const filtered = useMemo(() => {
     let list = assistants.slice();
@@ -43,7 +92,7 @@ export default function AssistantsList() {
     }
     if (status !== 'all') list = list.filter((a) => a.status === status);
     if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
-    else if (sort === 'convos') list.sort((a, b) => b.conversations - a.conversations);
+    else if (sort === 'convos') list.sort((a, b) => b.conversationCount - a.conversationCount);
     return list;
   }, [assistants, query, status, sort]);
 
@@ -82,6 +131,7 @@ export default function AssistantsList() {
               <SelectItem value="live">Live</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="paused">Paused</SelectItem>
+              <SelectItem value="processing">Processing</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={setSort}>
@@ -96,7 +146,22 @@ export default function AssistantsList() {
           </Select>
         </div>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-16 text-sm font-medium text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading assistants…
+          </div>
+        ) : error ? (
+          <EmptyState
+            icon={AlertCircle}
+            title="Could not load assistants"
+            description={error}
+            action={
+              <Button variant="outline" onClick={() => void load()}>
+                Try again
+              </Button>
+            }
+          />
+        ) : filtered.length === 0 ? (
           <EmptyState
             icon={Bot}
             title={assistants.length === 0 ? 'No assistants yet' : 'No assistants match your filters'}
@@ -163,26 +228,16 @@ export default function AssistantsList() {
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <StatusBadge
-                          tone={
-                            a.status === 'live'
-                              ? 'success'
-                              : a.status === 'draft'
-                                ? 'neutral'
-                                : 'warning'
-                          }
-                        >
-                          {a.status}
-                        </StatusBadge>
+                        <StatusBadge tone={statusTone[a.status] ?? 'neutral'}>{a.status}</StatusBadge>
                       </td>
                       <td className="hidden lg:table-cell px-5 py-3.5 text-sm text-foreground">
-                        {a.knowledgeSources} sources
+                        {a.knowledgeSourceCount} sources
                       </td>
                       <td className="px-5 py-3.5 text-sm text-foreground">
-                        {a.conversations.toLocaleString()}
+                        {a.conversationCount.toLocaleString()}
                       </td>
                       <td className="hidden lg:table-cell px-5 py-3.5 text-sm text-muted-foreground">
-                        {a.lastUpdated}
+                        {formatRelativeTime(a.updatedAt)}
                       </td>
                       <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
@@ -197,18 +252,9 @@ export default function AssistantsList() {
                             >
                               Open
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.success(`Duplicated ${a.name}`)}>
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.info(`${a.name} paused`)}>
-                              Pause
-                            </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => {
-                                deleteAssistant(a.id);
-                                toast.success(`Deleted ${a.name}`);
-                              }}
+                              onClick={() => void handleDelete(a)}
                             >
                               Delete
                             </DropdownMenuItem>
@@ -236,17 +282,7 @@ export default function AssistantsList() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <div className="truncate text-sm font-medium text-foreground">{a.name}</div>
-                        <StatusBadge
-                          tone={
-                            a.status === 'live'
-                              ? 'success'
-                              : a.status === 'draft'
-                                ? 'neutral'
-                                : 'warning'
-                          }
-                        >
-                          {a.status}
-                        </StatusBadge>
+                        <StatusBadge tone={statusTone[a.status] ?? 'neutral'}>{a.status}</StatusBadge>
                       </div>
                       <div className="mt-0.5 truncate text-xs text-muted-foreground">
                         {a.description}
@@ -254,12 +290,12 @@ export default function AssistantsList() {
                       <div className="mt-2 flex gap-4 text-[11px] text-muted-foreground">
                         <span>
                           <b className="font-medium text-foreground">
-                            {a.conversations.toLocaleString()}
+                            {a.conversationCount.toLocaleString()}
                           </b>{' '}
                           conversations
                         </span>
                         <span>
-                          <b className="font-medium text-foreground">{a.knowledgeSources}</b> sources
+                          <b className="font-medium text-foreground">{a.knowledgeSourceCount}</b> sources
                         </span>
                       </div>
                     </div>

@@ -1,6 +1,10 @@
 'use client';
 
-
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createAssistantsClient } from "@genie/api-client";
+import { getAccessToken, getApiBaseUrl } from "@/lib/supabase";
+import { useAuth } from "@/providers/auth-provider";
 import { useWizard } from "@/lib/wizard-context";
 import { WizardFooter } from "@/features/dashboard/wizard-footer";
 import { purposes } from "@/lib/mock/data";
@@ -8,11 +12,55 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import * as Icons from "lucide-react";
+import { toast } from "sonner";
 
 
 
 export default function Step() {
   const { draft, update } = useWizard();
+  const { activeOrg } = useAuth();
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+
+  const name = draft.name.trim();
+
+  async function handleContinue() {
+    if (!name) return;
+    if (!activeOrg) {
+      toast.error('Select a company before creating an assistant.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not signed in');
+      const client = createAssistantsClient(getApiBaseUrl());
+
+      if (!draft.assistantId) {
+        const created = await client.create(token, activeOrg.id, {
+          name,
+          purpose: draft.purpose,
+        });
+        update({
+          assistantId: created.id,
+          welcomeMessage: created.welcomeMessage,
+          tone: created.tone,
+          instructions: created.instructions,
+        });
+      } else {
+        await client.update(token, activeOrg.id, draft.assistantId, {
+          name,
+          purpose: draft.purpose,
+        });
+      }
+      router.push('/dashboard/assistants/new/teach');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save your assistant');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[720px] px-8 py-10 animate-in fade-in duration-300">
       <div className="mb-8">
@@ -68,11 +116,15 @@ export default function Step() {
             })}
           </div>
         </div>
+
+        {!activeOrg && (
+          <p className="text-xs text-destructive">Select a company from the top bar to continue.</p>
+        )}
       </div>
       <WizardFooter
-        nextTo="/dashboard/assistants/new/teach"
-        nextLabel="Continue to teach"
-        nextDisabled={!draft.name.trim()}
+        nextLabel={submitting ? 'Saving…' : 'Continue to teach'}
+        nextDisabled={!name || submitting || !activeOrg}
+        onNext={handleContinue}
       />
     </div>
   );

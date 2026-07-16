@@ -146,10 +146,10 @@ export const unansweredQuestions = [
 ];
 
 export const purposes = [
-  { id: "support", title: "Customer Support", description: "Answer questions about your product and reduce ticket volume.", icon: "LifeBuoy" },
+  { id: "customer_support", title: "Customer Support", description: "Answer questions about your product and reduce ticket volume.", icon: "LifeBuoy" },
   { id: "sales", title: "Sales Assistant", description: "Qualify leads, answer pricing questions and book demos.", icon: "TrendingUp" },
-  { id: "product", title: "Product Expert", description: "Guide users through features and best practices.", icon: "Sparkles" },
-  { id: "docs", title: "Documentation Assistant", description: "Help developers find the right page in your docs.", icon: "BookOpen" },
-  { id: "leads", title: "Lead Generation", description: "Capture contact details from website visitors.", icon: "UserPlus" },
+  { id: "product_expert", title: "Product Expert", description: "Guide users through features and best practices.", icon: "Sparkles" },
+  { id: "documentation", title: "Documentation Assistant", description: "Help developers find the right page in your docs.", icon: "BookOpen" },
+  { id: "lead_generation", title: "Lead Generation", description: "Capture contact details from website visitors.", icon: "UserPlus" },
   { id: "custom", title: "Custom Assistant", description: "Start blank and shape it however you like.", icon: "Wand2" },
 ] as const;

@@ -3,36 +3,39 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
-import { conversations } from "@/lib/mock/data";
-import { useAssistant, useKnowledgeSources } from "@/lib/store";
-import { MetricCard } from "@/components/common/MetricCard";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import { Check, Circle, ArrowRight, RefreshCw, Rocket } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { conversations } from '@/lib/mock/data';
+import { useAssistantDetail } from '@/features/dashboard/assistant-detail-context';
+import { MetricCard } from '@/components/common/MetricCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { formatRelativeTime } from '@/lib/utils';
+import { Check, Circle, ArrowRight, RefreshCw, Rocket } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Overview() {
-  const params = useParams(); const id = String(params.assistantId ?? params.id ?? "");
-  const a = useAssistant(id);
-  const sources = useKnowledgeSources(id);
+  const params = useParams();
+  const id = String(params.assistantId ?? params.id ?? '');
+  const { assistant: a } = useAssistantDetail();
   const convos = conversations.filter((c) => c.assistantId === id).slice(0, 5);
   if (!a) return null;
 
+  const sources = a.knowledgeSources ?? [];
+
   const setup = [
-    { label: "Assistant created", done: true },
-    { label: "Knowledge added", done: sources.length > 0 },
-    { label: "Assistant tested", done: true },
-    { label: "Customize appearance", done: false },
-    { label: "Deploy to website", done: a.status === "live" },
+    { label: 'Assistant created', done: true },
+    { label: 'Knowledge added', done: sources.length > 0 },
+    { label: 'Assistant tested', done: a.conversationCount > 0 },
+    { label: 'Customize appearance', done: false },
+    { label: 'Deploy to website', done: a.status === 'live' },
   ];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Metrics Row */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard label="Conversations (30d)" value={a.conversations.toLocaleString()} delta={{ value: "+9%", direction: "up" }} />
-        <MetricCard label="Messages" value={a.messages.toLocaleString()} />
-        <MetricCard label="Resolution rate" value={`${a.resolutionRate}%`} delta={{ value: "+3pt", direction: "up" }} />
-        <MetricCard label="Knowledge sources" value={a.knowledgeSources} />
+        <MetricCard label="Conversations" value={a.conversationCount.toLocaleString()} />
+        <MetricCard label="Knowledge sources" value={a.knowledgeSourceCount} />
+        <MetricCard label="Status" value={a.status} />
+        <MetricCard label="Last updated" value={formatRelativeTime(a.updatedAt)} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -70,14 +73,16 @@ export default function Overview() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-ambient">
             <h2 className="text-base font-bold text-foreground tracking-tight">Knowledge status</h2>
             <div className="mt-4 divide-y divide-border/60">
-              {sources.map((s) => (
+              {sources.length === 0 ? (
+                <div className="py-6 text-center text-sm font-medium text-muted-foreground/80">No knowledge sources yet.</div>
+              ) : sources.map((s) => (
                 <div key={s.id} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-foreground">{s.name}</div>
-                    <div className="text-xs text-muted-foreground/80 mt-0.5 font-medium">{s.pages} pages · updated {s.updated}</div>
+                    <div className="text-xs text-muted-foreground/80 mt-0.5 font-medium">Updated {formatRelativeTime(s.lastUpdatedAt)}</div>
                   </div>
-                  <StatusBadge tone={s.status === "ready" ? "success" : s.status === "processing" ? "info" : s.status === "failed" ? "error" : "warning"}>
-                    {s.status.replace("_", " ")}
+                  <StatusBadge tone={s.status === "ready" ? "success" : s.status === "pending" ? "info" : "error"}>
+                    {s.status}
                   </StatusBadge>
                 </div>
               ))}
@@ -102,15 +107,21 @@ export default function Overview() {
                 </li>
               ))}
             </ul>
-            <Button variant="outline" size="sm" className="mt-6 w-full rounded-xl text-xs font-bold border-border/80 hover:bg-muted/80">Complete setup</Button>
+            <Button asChild variant="outline" size="sm" className="mt-6 w-full rounded-xl text-xs font-bold border-border/80 hover:bg-muted/80">
+              <Link href={`/dashboard/assistants/${id}/knowledge`}>Complete setup</Link>
+            </Button>
           </div>
 
           {/* Recommendations */}
           <div className="rounded-2xl border border-border bg-card p-6 shadow-ambient">
             <h2 className="text-base font-bold text-foreground tracking-tight">Recommendations</h2>
             <div className="mt-5 space-y-4">
-              <RecoItem icon={RefreshCw} title="Re-sync pricing.acme.com" desc="Not updated in 14 days." />
-              <RecoItem icon={Rocket} title="Ready to deploy" desc="Add the widget to your site." />
+              {sources.length === 0 && (
+                <RecoItem icon={RefreshCw} title="Add your first source" desc="Teach your assistant from the Knowledge tab." />
+              )}
+              {a.status !== 'live' && (
+                <RecoItem icon={Rocket} title="Ready to deploy" desc="Add the widget to your site." />
+              )}
             </div>
           </div>
         </div>
