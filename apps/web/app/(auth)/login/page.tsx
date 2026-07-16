@@ -1,31 +1,40 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, Suspense, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AuthDivider, AuthLink, AuthShell } from '@/components/auth/auth-shell';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
-import { mapAuthError, routeAfterAuth } from '@/lib/auth-flow';
+import { mapAuthError, rememberAuthNextPath, routeAfterAuth } from '@/lib/auth-flow';
 import { supabase } from '@/lib/supabase';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get('invite');
+  const nextPath = searchParams.get('next');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    rememberAuthNextPath(nextPath);
+  }, [nextPath]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
+      rememberAuthNextPath(nextPath);
       const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError || !data.session) throw signInError ?? new Error('Sign in failed');
-      const routeError = await routeAfterAuth(data.session.access_token, router, { inviteToken });
+      const routeError = await routeAfterAuth(data.session.access_token, router, {
+        inviteToken,
+        nextPath,
+      });
       if (routeError) throw new Error(routeError);
     } catch (err) {
       setError(mapAuthError(err, 'Invalid email or password'));
