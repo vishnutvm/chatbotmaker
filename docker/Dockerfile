@@ -40,7 +40,11 @@ FROM node:22-alpine AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 WORKDIR /app
 ARG GIT_COMMIT_SHA=unknown
-ENV GIT_COMMIT_SHA=$GIT_COMMIT_SHA
+ARG RAILWAY_GIT_COMMIT_SHA=unknown
+ARG APP_VERSION=0.2.0
+ENV GIT_COMMIT_SHA=${RAILWAY_GIT_COMMIT_SHA:-$GIT_COMMIT_SHA}
+ENV RAILWAY_GIT_COMMIT_SHA=$RAILWAY_GIT_COMMIT_SHA
+ENV APP_VERSION=$APP_VERSION
 ENV NODE_ENV=production
 
 COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules

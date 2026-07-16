@@ -16,7 +16,10 @@ export class HealthController {
   getVersion(): VersionResponse {
     return buildVersionPayload({
       service: 'genie-api',
-      version: process.env.npm_package_version || '0.1.0',
+      version:
+        process.env.APP_VERSION ||
+        process.env.npm_package_version ||
+        '0.2.0',
     });
   }
 }
