@@ -176,8 +176,16 @@ export function SignupForm() {
             className="h-11"
           />
         </div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {success ? <p className="text-sm text-success">{success}</p> : null}
+        {error ? (
+          <p className="text-sm text-destructive" data-testid="signup-error">
+            {error}
+          </p>
+        ) : null}
+        {success ? (
+          <p className="text-sm text-success" data-testid="signup-success">
+            {success}
+          </p>
+        ) : null}
         <Button type="submit" data-testid="signup-submit" disabled={loading} className="w-full h-11">
           {loading ? 'Working…' : 'Create account with email'}
         </Button>

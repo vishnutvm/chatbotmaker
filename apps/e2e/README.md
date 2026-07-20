@@ -44,7 +44,9 @@ GitHub Actions job `e2e` runs after build + migrations. Set secrets:
 - `E2E_SUPABASE_URL`
 - `E2E_SUPABASE_ANON_KEY`
 
-`auth-api` and smoke/guards run without Supabase secrets.
+CI also sets `E2E_API_SUPABASE_URL` to the hosted Supabase URL so the API verifies real JWTs (JWKS) for `auth-flow`. `auth-api` uses Supabase signUp for tokens in JWKS mode, or synthetic HS256 when `E2E_API_SUPABASE_URL` is localhost.
+
+`E2E_JWT_SECRET` / `SUPABASE_JWT_SECRET` must match between the e2e helper and API when using HS256 (local auth-api without hosted Supabase).
 
 ## Production parity (Railway)
 
