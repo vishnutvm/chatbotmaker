@@ -39,13 +39,10 @@ RUN cd apps/api && npx --yes prisma@6.19.3 generate
 FROM node:22-alpine AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 WORKDIR /app
-ARG GIT_COMMIT_SHA=unknown
-ARG RAILWAY_GIT_COMMIT_SHA=unknown
 ARG APP_VERSION=0.2.2
-ENV GIT_COMMIT_SHA=${RAILWAY_GIT_COMMIT_SHA:-$GIT_COMMIT_SHA}
-ENV RAILWAY_GIT_COMMIT_SHA=$RAILWAY_GIT_COMMIT_SHA
 ENV APP_VERSION=$APP_VERSION
 ENV NODE_ENV=production
+# Git SHA comes from Railway/runtime (RAILWAY_GIT_COMMIT_SHA / GIT_COMMIT_SHA) — do not bake "unknown".
 
 COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=prod-deps --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
