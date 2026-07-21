@@ -9,7 +9,6 @@ import {
   BarChart3,
   Settings,
   LifeBuoy,
-  Sparkles,
   CreditCard,
   Users,
   ChevronsUpDown,
@@ -27,6 +26,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/providers/auth-provider';
 import { companyInitials } from '@/lib/identity';
+import { GenieLogo } from '@/components/brand/GenieLogo';
 
 const primary = [
   { href: '/dashboard', label: 'Home', icon: Home },
@@ -102,9 +102,7 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col">
       <div className="px-3 pt-4 pb-3">
         <Link href="/dashboard" onClick={onNavigate} className="flex items-center gap-2 px-1.5 py-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
-            <Sparkles className="h-4 w-4" />
-          </div>
+          <GenieLogo className="h-8 w-8 text-[#5A5CE6]" />
           <span className="text-[15px] font-semibold tracking-tight text-foreground font-heading">
             Genie
           </span>

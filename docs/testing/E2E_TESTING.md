@@ -53,6 +53,7 @@ pnpm test:e2e
 - **e2e** job: Playwright smoke tests always; full auth UI when GitHub secrets are set:
   - `E2E_SUPABASE_URL`
   - `E2E_SUPABASE_ANON_KEY`
+  - `E2E_SUPABASE_SERVICE_ROLE_KEY` (required if Confirm email is enabled)
 
 ## GitHub secrets (optional, for full UI auth in CI)
 
@@ -60,3 +61,4 @@ pnpm test:e2e
 |--------|--------|
 | `E2E_SUPABASE_URL` | `https://rocxcjxaqceqndkymujl.supabase.co` |
 | `E2E_SUPABASE_ANON_KEY` | Supabase anon key |
+| `E2E_SUPABASE_SERVICE_ROLE_KEY` | Service role key (admin-confirm for CI) |

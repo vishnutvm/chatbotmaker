@@ -67,9 +67,30 @@ export function DashboardShell({
   const sidebarContent = (
     <>
       <div className="flex h-[var(--header-height)] items-center gap-2 border-b border-[var(--border)] px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--primary)] text-sm font-bold text-white">
-          G
-        </div>
+        <svg
+          viewBox="0 0 512 512"
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-8 w-8 shrink-0 text-[#5A5CE6]"
+          role="img"
+          aria-label="Genie"
+        >
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={32}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M128 96 H352 V320 H224 L144 392 V320 H128 Z"
+          />
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={32}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M304 144 H192 V208 H304 V272 H192 V336 H320"
+          />
+        </svg>
         {!collapsed ? (
           <span className="font-semibold text-[var(--foreground)]">Genie</span>
         ) : null}

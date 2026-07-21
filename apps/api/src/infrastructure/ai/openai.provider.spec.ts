@@ -43,6 +43,21 @@ describe('OpenAiProvider', () => {
     }
   });
 
+  it('throws AI_NOT_CONFIGURED when embed is called without API key', async () => {
+    delete process.env.OPENAI_API_KEY;
+    const provider = new OpenAiProvider();
+
+    await expect(provider.embed('hello')).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    try {
+      await provider.embed(['hello', 'world']);
+    } catch (error) {
+      expect((error as ServiceUnavailableException).getResponse()).toMatchObject({
+        code: 'AI_NOT_CONFIGURED',
+      });
+    }
+  });
+
   it('exposes default model helper', () => {
     process.env.AI_DEFAULT_MODEL = 'gpt-4o-mini';
     const provider = new OpenAiProvider();

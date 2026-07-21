@@ -1,13 +1,38 @@
 import { defineConfig, devices } from '@playwright/test';
 
+function readEnv(key: string): string | undefined {
+  const value = process.env[key]?.trim();
+  return value || undefined;
+}
+
 const dashboardPort = process.env.E2E_DASHBOARD_PORT ?? '3000';
 const apiPort = process.env.E2E_API_PORT ?? '4000';
 const dashboardUrl = process.env.E2E_DASHBOARD_URL ?? `http://localhost:${dashboardPort}`;
 const apiUrl = process.env.E2E_API_URL ?? `http://localhost:${apiPort}`;
 
 const supabaseConfigured = Boolean(
-  process.env.E2E_SUPABASE_URL && process.env.E2E_SUPABASE_ANON_KEY,
+  readEnv('E2E_SUPABASE_URL') && readEnv('E2E_SUPABASE_ANON_KEY'),
 );
+
+/** Shared CI/test HS256 secret — must match apps/e2e/tests/helpers/test-jwt.ts */
+const e2eJwtSecret =
+  readEnv('E2E_JWT_SECRET') ??
+  readEnv('SUPABASE_JWT_SECRET') ??
+  'ci-test-jwt-secret-minimum-32-characters';
+
+/**
+ * API JWT verification follows SUPABASE_URL, not the web client's Supabase project.
+ * auth-api (synthetic HS256): localhost unless E2E_API_SUPABASE_URL is set.
+ * auth-flow (real Supabase JWTs): set E2E_API_SUPABASE_URL to the hosted project in CI.
+ */
+const apiSupabaseUrl =
+  readEnv('E2E_API_SUPABASE_URL') ??
+  readEnv('SUPABASE_URL') ??
+  'http://127.0.0.1:54321';
+
+// Expose to Playwright test workers (webServer child env is not inherited by tests).
+process.env.E2E_JWT_SECRET = e2eJwtSecret;
+process.env.E2E_API_SUPABASE_URL = apiSupabaseUrl;
 
 const apiServerEnv = {
   ...process.env,
@@ -19,10 +44,8 @@ const apiServerEnv = {
   DIRECT_URL:
     process.env.DIRECT_URL ??
     'postgresql://postgres:postgres@127.0.0.1:5432/genie_ci',
-  SUPABASE_URL: process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:54321',
-  SUPABASE_JWT_SECRET:
-    process.env.SUPABASE_JWT_SECRET ??
-    'ci-test-jwt-secret-minimum-32-characters',
+  SUPABASE_URL: apiSupabaseUrl,
+  SUPABASE_JWT_SECRET: e2eJwtSecret,
   CORS_ORIGINS:
     process.env.CORS_ORIGINS ??
     `http://localhost:${dashboardPort},http://127.0.0.1:${dashboardPort}`,
@@ -52,6 +75,7 @@ export default defineConfig({
     {
       name: 'full-stack',
       testMatch: /(auth-api|auth-flow)\.spec\.ts/,
+      timeout: 120_000,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: dashboardUrl,
@@ -71,9 +95,9 @@ export default defineConfig({
               env: {
                 ...process.env,
                 NEXT_PUBLIC_API_URL: apiUrl,
-                NEXT_PUBLIC_SUPABASE_URL: process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:54321',
+                NEXT_PUBLIC_SUPABASE_URL: readEnv('E2E_SUPABASE_URL') ?? 'http://127.0.0.1:54321',
                 NEXT_PUBLIC_SUPABASE_ANON_KEY:
-                  process.env.E2E_SUPABASE_ANON_KEY ?? 'public-anon-key',
+                  readEnv('E2E_SUPABASE_ANON_KEY') ?? 'public-anon-key',
               },
             },
           ]
@@ -93,13 +117,15 @@ export default defineConfig({
               env: {
                 ...process.env,
                 NEXT_PUBLIC_API_URL: apiUrl,
-                NEXT_PUBLIC_SUPABASE_URL: process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:54321',
+                NEXT_PUBLIC_SUPABASE_URL: readEnv('E2E_SUPABASE_URL') ?? 'http://127.0.0.1:54321',
                 NEXT_PUBLIC_SUPABASE_ANON_KEY:
-                  process.env.E2E_SUPABASE_ANON_KEY ?? 'public-anon-key',
+                  readEnv('E2E_SUPABASE_ANON_KEY') ?? 'public-anon-key',
               },
             },
           ],
   metadata: {
     supabaseConfigured,
+    apiSupabaseUrl,
+    jwtMode: apiSupabaseUrl.startsWith('https://') ? 'jwks' : 'hs256-secret',
   },
 });

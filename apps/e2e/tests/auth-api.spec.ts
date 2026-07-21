@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { expectApiStatus } from './helpers/api-response';
 import { signTestJwt } from './helpers/test-jwt';
 
 const apiUrl = process.env.E2E_API_URL ?? 'http://localhost:4000';
@@ -19,12 +20,12 @@ test.describe('Auth API chain', () => {
         organizationName: `E2E Org ${unique}`,
       },
     });
-    expect(onboard.status()).toBe(201);
+    await expectApiStatus(onboard, 201, 'POST /api/v1/auth/onboard');
 
     const session = await request.get(`${apiUrl}/api/v1/auth/session`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    expect(session.ok()).toBeTruthy();
+    await expectApiStatus(session, 200, 'GET /api/v1/auth/session');
     const sessionBody = (await session.json()) as { onboarded: boolean; user?: { email: string } };
     expect(sessionBody.onboarded).toBe(true);
     expect(sessionBody.user?.email).toBe(email);
@@ -32,7 +33,7 @@ test.describe('Auth API chain', () => {
     const me = await request.get(`${apiUrl}/api/v1/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    expect(me.ok()).toBeTruthy();
+    await expectApiStatus(me, 200, 'GET /api/v1/auth/me');
     const meBody = (await me.json()) as { user: { email: string }; organizations: unknown[] };
     expect(meBody.user.email).toBe(email);
     expect(meBody.organizations.length).toBeGreaterThan(0);
@@ -40,7 +41,7 @@ test.describe('Auth API chain', () => {
 
   test('session returns onboarded false without token', async ({ request }) => {
     const session = await request.get(`${apiUrl}/api/v1/auth/session`);
-    expect(session.ok()).toBeTruthy();
+    await expectApiStatus(session, 200, 'GET /api/v1/auth/session (anonymous)');
     const body = (await session.json()) as { onboarded: boolean };
     expect(body.onboarded).toBe(false);
   });
@@ -50,6 +51,6 @@ test.describe('Auth API chain', () => {
       headers: { 'Content-Type': 'application/json' },
       data: { name: 'No Auth' },
     });
-    expect(onboard.status()).toBe(401);
+    await expectApiStatus(onboard, 401, 'POST /api/v1/auth/onboard (no token)');
   });
 });

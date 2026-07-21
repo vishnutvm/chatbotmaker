@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, Sparkles } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { SidebarBody } from '@/components/shell/Sidebar';
 import { ThemeToggleButton } from '@/components/shell/ThemeToggleButton';
+import { GenieLogo } from '@/components/brand/GenieLogo';
 
 export function MobileTopBar() {
   const [open, setOpen] = useState(false);
@@ -25,9 +26,7 @@ export function MobileTopBar() {
         </SheetContent>
       </Sheet>
       <Link href="/dashboard" className="flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Sparkles className="h-4 w-4" />
-        </div>
+        <GenieLogo className="h-7 w-7 text-[#5A5CE6]" />
         <span className="text-[15px] font-semibold tracking-tight text-foreground">Genie</span>
       </Link>
       <ThemeToggleButton />

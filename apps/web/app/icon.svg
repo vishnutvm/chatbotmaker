@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .primary {
+        fill: none;
+        stroke: #5A5CE6;
+        stroke-width: 32;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    </style>
+  </defs>
+  <path class="primary" d="M128 96 H352 V320 H224 L144 392 V320 H128 Z"/>
+  <path class="primary" d="M304 144 H192 V208 H304 V272 H192 V336 H320"/>
+</svg>

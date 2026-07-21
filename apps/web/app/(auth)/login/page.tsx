@@ -93,7 +93,11 @@ function LoginForm() {
             <AuthLink href="/forgot-password">Forgot password?</AuthLink>
           </div>
         </div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? (
+          <p className="text-sm text-destructive" data-testid="login-error">
+            {error}
+          </p>
+        ) : null}
         <Button type="submit" data-testid="login-submit" disabled={loading} className="w-full h-11">
           {loading ? 'Signing in…' : 'Sign in with email'}
         </Button>
