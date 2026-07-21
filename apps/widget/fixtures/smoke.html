@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GenieWidget smoke fixture</title>
+  </head>
+  <body>
+    <h1>GenieWidget smoke</h1>
+    <p id="status">Loading…</p>
+    <!-- Relative path works when served from apps/widget (e.g. npx serve .) -->
+    <script src="../dist/widget.js"></script>
+    <script>
+      (function () {
+        var el = document.getElementById('status');
+        try {
+          if (!window.GenieWidget || typeof GenieWidget.init !== 'function') {
+            throw new Error('GenieWidget global missing');
+          }
+          GenieWidget.init({
+            apiKey: 'key_fixture',
+            assistantId: 'asst_fixture',
+          });
+          el.textContent = 'OK — init succeeded (version ' + GenieWidget.version + ')';
+        } catch (err) {
+          el.textContent = 'FAIL — ' + (err && err.message ? err.message : String(err));
+          el.style.color = 'crimson';
+        }
+      })();
+    </script>
+  </body>
+</html>

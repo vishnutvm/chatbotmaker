@@ -2,11 +2,14 @@
   "name": "@genie/widget",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "tsup src/index.ts --format iife --global-name GenieWidget --minify",
-    "dev": "tsup src/index.ts --format iife --global-name GenieWidget --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "lint": "echo \"No lint configured for @genie/widget\""
+    "lint": "echo \"No lint configured for @genie/widget\"",
+    "test": "pnpm build && node --test scripts/widget.test.mjs",
+    "smoke": "pnpm build && node --test scripts/widget.test.mjs"
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
