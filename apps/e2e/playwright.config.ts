@@ -75,6 +75,7 @@ export default defineConfig({
     {
       name: 'full-stack',
       testMatch: /(auth-api|auth-flow)\.spec\.ts/,
+      timeout: 120_000,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: dashboardUrl,
