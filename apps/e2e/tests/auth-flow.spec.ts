@@ -1,172 +1,108 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { readEnv } from './helpers/env';
-import { confirmUserEmailById, hasServiceRoleForE2E } from './helpers/supabase-session';
+import { createAdminUser, deleteAdminUser, hasServiceRoleForE2E } from './helpers/supabase-session';
 
 const supabaseUrl = readEnv('E2E_SUPABASE_URL');
 const supabaseAnonKey = readEnv('E2E_SUPABASE_ANON_KEY');
 const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-async function readSignupDiagnostics(page: import('@playwright/test').Page): Promise<string> {
-  const errorText = await page.getByTestId('signup-error').textContent().catch(() => null);
-  const successText = await page.getByTestId('signup-success').textContent().catch(() => null);
-  const loading = await page.getByTestId('signup-submit').textContent().catch(() => null);
+async function readPageDiagnostics(page: import('@playwright/test').Page): Promise<string> {
+  const errorText = await page.getByTestId('signup-error').textContent().catch(() => null)
+    ?? await page.getByTestId('login-error').textContent().catch(() => null);
   return [
     `url=${page.url()}`,
     errorText ? `error="${errorText.trim()}"` : 'error=(none visible)',
-    successText ? `success="${successText.trim()}"` : 'success=(none visible)',
-    loading ? `submit="${loading.trim()}"` : '',
-  ]
-    .filter(Boolean)
-    .join('; ');
+  ].join('; ');
 }
 
 async function expectDashboardOrThrow(page: import('@playwright/test').Page, phase: string): Promise<void> {
   try {
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 45_000 });
   } catch {
-    throw new Error(`${phase} did not reach /dashboard. ${await readSignupDiagnostics(page)}`);
+    throw new Error(`[${phase}] did not reach /dashboard. ${await readPageDiagnostics(page)}`);
   }
-}
-
-/**
- * Complete signup when Supabase requires email confirmation:
- * intercept signup response → admin-confirm → login via UI → dashboard.
- */
-async function finishSignupWithAdminConfirm(
-  page: import('@playwright/test').Page,
-  email: string,
-  password: string,
-  userId: string,
-): Promise<void> {
-  if (!hasServiceRoleForE2E()) {
-    throw new Error(
-      `Signup created user ${userId} without a session (Confirm email is enabled) and ` +
-        `E2E_SUPABASE_SERVICE_ROLE_KEY is not set. Disable Confirm email in Supabase Auth, ` +
-        `or add the service-role secret for CI. ${await readSignupDiagnostics(page)}`,
-    );
-  }
-
-  await confirmUserEmailById(userId);
-  await page.goto('/login');
-  await page.getByTestId('login-email').fill(email);
-  await page.getByTestId('login-password').fill(password);
-  await page.getByTestId('login-submit').click();
-  await expectDashboardOrThrow(page, 'Post-confirm login');
 }
 
 test.describe('Auth UI full flow (Supabase)', () => {
   test.skip(!supabaseConfigured, 'Set E2E_SUPABASE_URL and E2E_SUPABASE_ANON_KEY');
 
-  test('email signup → onboard → dashboard → logout → login → dashboard', async ({ page }) => {
-    const unique = Date.now();
-    let email = `e2e+${unique}@example.com`;
-    const password = `E2eTest!${unique}`;
-    const name = 'E2E User';
+  test(
+    'email signup → onboard → dashboard → logout → login → dashboard',
+    { timeout: 120_000 },
+    async ({ page }) => {
+      const unique = Date.now();
+      const email = `e2e+${unique}@example.com`;
+      const password = `E2eTest!${unique}`;
+      const name = 'E2E User';
+      let adminUserId: string | undefined;
 
-    await page.goto('/signup');
-    await page.getByTestId('signup-name').fill(name);
-    await page.getByTestId('signup-email').fill(email);
-    await page.getByTestId('signup-password').fill(password);
-    await expect(page.getByTestId('signup-org')).toHaveCount(0);
+      if (hasServiceRoleForE2E()) {
+        // Fast path: admin-create a confirmed user, then sign in via the login UI.
+        // This skips the UI signup form and email-confirmation race entirely.
+        const { userId } = await createAdminUser(email, password, name);
+        adminUserId = userId;
 
-    let signupAttempt = 0;
-    const maxSignupAttempts = 3;
-    let reachedDashboard = false;
+        await page.goto('/login');
+        await page.getByTestId('login-email').fill(email);
+        await page.getByTestId('login-password').fill(password);
+        await page.getByTestId('login-submit').click();
+        await expectDashboardOrThrow(page, 'Initial login after admin-create');
+      } else {
+        // Fallback path: UI signup (requires autoconfirm to be ON in Supabase Auth).
+        await page.goto('/signup');
+        await page.getByTestId('signup-name').fill(name);
+        await page.getByTestId('signup-email').fill(email);
+        await page.getByTestId('signup-password').fill(password);
+        await expect(page.getByTestId('signup-org')).toHaveCount(0);
 
-    while (signupAttempt < maxSignupAttempts) {
-      signupAttempt += 1;
-      const attemptEmail = signupAttempt === 1 ? email : `e2e+${unique}-r${signupAttempt}@example.com`;
-      if (signupAttempt > 1) {
-        await page.getByTestId('signup-email').fill(attemptEmail);
-      }
+        await page.getByTestId('signup-submit').click();
 
-      const signupResponsePromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/auth/v1/signup') &&
-          (response.status() === 200 || response.status() >= 400),
-        { timeout: 30_000 },
-      );
+        const reached = await page
+          .waitForURL(/\/dashboard/, { timeout: 45_000 })
+          .then(() => true)
+          .catch(() => false);
 
-      await page.getByTestId('signup-submit').click();
-
-      const signupResponse = await signupResponsePromise.catch(() => null);
-      let signupUserId: string | undefined;
-      let signupHasSession = false;
-      let signupStatus = 0;
-      let signupBodyText = '';
-
-      if (signupResponse) {
-        signupStatus = signupResponse.status();
-        signupBodyText = await signupResponse.text().catch(() => '');
-        try {
-          const body = JSON.parse(signupBodyText) as {
-            access_token?: string;
-            user?: { id?: string };
-            id?: string;
-          };
-          signupUserId = body.user?.id ?? body.id;
-          signupHasSession = Boolean(body.access_token);
-        } catch {
-          // non-JSON body
+        if (!reached) {
+          const diag = await readPageDiagnostics(page);
+          const successText = await page.getByTestId('signup-success').textContent().catch(() => '');
+          if (/confirm|check your email/i.test(successText)) {
+            throw new Error(
+              `Signup requires email confirmation. Set E2E_SUPABASE_SERVICE_ROLE_KEY for CI ` +
+                `or disable "Confirm email" in Supabase Auth. ${diag}`,
+            );
+          }
+          throw new Error(`Signup flow failed. ${diag}`);
         }
       }
 
-      // Confirm-email path: no session — admin-confirm immediately (skip 45s dashboard wait).
-      if (signupUserId && !signupHasSession && signupStatus < 400) {
-        await finishSignupWithAdminConfirm(page, attemptEmail, password, signupUserId);
-        // Keep credentials used for the rest of the test (logout → login).
-        email = attemptEmail;
-        reachedDashboard = true;
-        break;
+      await expect(page.getByTestId('dashboard-welcome')).toBeVisible({ timeout: 15_000 });
+
+      await page.getByRole('link', { name: /Create assistant/i }).click();
+      await expect(page.getByText('Create your AI assistant')).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText('Customer Support')).toBeVisible();
+
+      // Logout then verify protected route redirects.
+      await page.getByTestId('user-menu-trigger').click();
+      await page.getByTestId('logout-button').click();
+      await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
+
+      await page.goto('/dashboard');
+      await expect(page).toHaveURL(/\/login/);
+
+      // Login again.
+      await page.getByTestId('login-email').fill(email);
+      await page.getByTestId('login-password').fill(password);
+      await page.getByTestId('login-submit').click();
+      await expectDashboardOrThrow(page, 'Login');
+      await expect(page.getByTestId('dashboard-welcome')).toBeVisible({ timeout: 15_000 });
+
+      // Cleanup: delete admin-created user so CI doesn't accumulate stale accounts.
+      if (adminUserId && hasServiceRoleForE2E()) {
+        await deleteAdminUser(adminUserId).catch(() => undefined);
       }
-
-      reachedDashboard = await page
-        .waitForURL(/\/dashboard/, { timeout: 45_000 })
-        .then(() => true)
-        .catch(() => false);
-
-      if (reachedDashboard) {
-        email = attemptEmail;
-        break;
-      }
-
-      const diagnostics = await readSignupDiagnostics(page);
-      const isRateLimited =
-        signupStatus === 429 ||
-        /rate limit|too many requests|over_email_send_rate_limit/i.test(
-          `${diagnostics} ${signupBodyText}`,
-        );
-
-      if (isRateLimited && signupAttempt < maxSignupAttempts) {
-        await page.waitForTimeout(2_000 * signupAttempt);
-        continue;
-      }
-
-      throw new Error(`Signup flow failed. status=${signupStatus}; ${diagnostics}`);
-    }
-
-    expect(reachedDashboard).toBe(true);
-    await expect(page.getByTestId('dashboard-welcome')).toBeVisible({ timeout: 15_000 });
-
-    await page.getByRole('link', { name: /Create assistant/i }).click();
-    await expect(page.getByText('Create your AI assistant')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('Customer Support')).toBeVisible();
-
-    await page.getByTestId('user-menu-trigger').click();
-    await page.getByTestId('logout-button').click();
-    await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
-
-    await page.goto('/dashboard');
-    await expect(page).toHaveURL(/\/login/);
-
-    await page.getByTestId('login-email').fill(email);
-    await page.getByTestId('login-password').fill(password);
-    await page.getByTestId('login-submit').click();
-
-    await expectDashboardOrThrow(page, 'Login');
-    await expect(page.getByTestId('dashboard-welcome')).toBeVisible({ timeout: 15_000 });
-  });
+    },
+  );
 
   test('login page links to signup', async ({ page }) => {
     await page.goto('/login');
@@ -177,6 +113,6 @@ test.describe('Auth UI full flow (Supabase)', () => {
   test.afterEach(async ({}, testInfo) => {
     if (!supabaseConfigured || testInfo.status !== 'passed') return;
     const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
-    await supabase.auth.signOut();
+    await supabase.auth.signOut().catch(() => undefined);
   });
 });

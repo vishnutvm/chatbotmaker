@@ -42,6 +42,37 @@ export async function confirmUserEmailById(userId: string): Promise<void> {
   }
 }
 
+/**
+ * Create a confirmed Supabase user via the admin API (bypasses email confirmation entirely).
+ * Returns the password so callers can sign in via the UI login form.
+ */
+export async function createAdminUser(
+  email: string,
+  password: string,
+  displayName = 'E2E User',
+): Promise<{ userId: string }> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { name: displayName },
+  });
+  if (error) {
+    throw new Error(`admin.createUser failed for ${email}: ${error.message}`);
+  }
+  return { userId: data.user.id };
+}
+
+/** Delete a Supabase Auth user by ID (cleanup after tests). */
+export async function deleteAdminUser(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) {
+    throw new Error(`admin.deleteUser failed for ${userId}: ${error.message}`);
+  }
+}
+
 /** Real Supabase access token — used when the API verifies JWTs via JWKS (hosted Supabase). */
 export async function createSupabaseAccessToken(
   email: string,
