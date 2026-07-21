@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { readEnv } from './env';
 
 const MAX_SIGNUP_ATTEMPTS = 3;
@@ -12,6 +12,36 @@ function getSupabaseClientConfig(): { url: string; anonKey: string } {
   return { url, anonKey };
 }
 
+function getServiceRoleKey(): string | undefined {
+  return readEnv('E2E_SUPABASE_SERVICE_ROLE_KEY') ?? readEnv('SUPABASE_SERVICE_ROLE_KEY');
+}
+
+export function hasServiceRoleForE2E(): boolean {
+  return Boolean(getServiceRoleKey() && readEnv('E2E_SUPABASE_URL'));
+}
+
+function createAdminClient(): SupabaseClient {
+  const { url } = getSupabaseClientConfig();
+  const serviceKey = getServiceRoleKey();
+  if (!serviceKey) {
+    throw new Error(
+      'E2E_SUPABASE_SERVICE_ROLE_KEY is required to confirm users when email confirmation is enabled',
+    );
+  }
+  return createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+/** Confirm email for a Supabase Auth user (no inbox required). */
+export async function confirmUserEmailById(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(userId, { email_confirm: true });
+  if (error) {
+    throw new Error(`Failed to confirm Supabase user ${userId}: ${error.message}`);
+  }
+}
+
 /** Real Supabase access token — used when the API verifies JWTs via JWKS (hosted Supabase). */
 export async function createSupabaseAccessToken(
   email: string,
@@ -19,6 +49,25 @@ export async function createSupabaseAccessToken(
 ): Promise<{ token: string; supabaseUserId: string }> {
   const { url, anonKey } = getSupabaseClientConfig();
   const supabase = createClient(url, anonKey);
+  const serviceKey = getServiceRoleKey();
+
+  if (serviceKey) {
+    const admin = createAdminClient();
+    const created = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name: 'API E2E User' },
+    });
+    if (created.error) {
+      throw new Error(`Supabase admin createUser failed: ${created.error.message}`);
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.session?.access_token || !data.user?.id) {
+      throw new Error(`Supabase signIn after admin create failed: ${error?.message ?? 'no session'}`);
+    }
+    return { token: data.session.access_token, supabaseUserId: data.user.id };
+  }
 
   let lastError = 'unknown';
 
@@ -43,6 +92,7 @@ export async function createSupabaseAccessToken(
     if (!token || !supabaseUserId) {
       throw new Error(
         `Supabase signUp returned no session (email confirmation may be required). ` +
+          `Set E2E_SUPABASE_SERVICE_ROLE_KEY or disable Confirm email in Supabase Auth. ` +
           `user=${data.user?.id ?? 'null'} session=${data.session ? 'present' : 'missing'}`,
       );
     }

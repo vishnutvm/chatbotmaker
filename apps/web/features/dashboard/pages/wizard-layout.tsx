@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { WizardProvider, useWizard, WIZARD_STEPS } from '@/lib/wizard-context';
-import { Check, X, Sparkles } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { GenieLogo } from '@/components/brand/GenieLogo';
 
 export function WizardLayout({ children }: { children: ReactNode }) {
   return (
@@ -34,9 +35,7 @@ function WizardInner({ children }: { children: ReactNode }) {
         {/* Top bar */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/95 px-6 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
-              <Sparkles className="h-4 w-4" />
-            </div>
+            <GenieLogo className="h-8 w-8 text-[#5A5CE6]" />
             <div>
               <div className="text-sm font-semibold text-foreground leading-none tracking-tight">Create a new assistant</div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">Step {currentIdx + 1} of {WIZARD_STEPS.length} · {WIZARD_STEPS[currentIdx]?.label}</div>

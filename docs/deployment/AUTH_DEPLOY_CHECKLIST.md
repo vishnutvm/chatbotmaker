@@ -50,6 +50,10 @@ Remove old `chatbotmaker-dashboard-seven.vercel.app` URLs.
 
 `session` tolerates invalid tokens; `onboard` requires a valid Supabase JWT.
 
+- Hosted Supabase: API must use the project URL (`SUPABASE_URL=https://….supabase.co`) so JWKS verification runs.
+- CI dual-mode: when `SUPABASE_JWT_SECRET` is **explicitly** set alongside a hosted URL, HS256 test tokens are also accepted (E2E `signTestJwt`). Do **not** set `SUPABASE_JWT_SECRET` on production Railway for hosted projects — JWKS only.
+- Confirm email: if signup never reaches `/dashboard`, disable Confirm email or set `E2E_SUPABASE_SERVICE_ROLE_KEY` so CI can admin-confirm.
+
 1. Railway `SUPABASE_URL` must match Vercel `NEXT_PUBLIC_SUPABASE_URL` (same project).
 2. For `https://*.supabase.co`, the API verifies JWTs via **JWKS** — redeploy after setting `SUPABASE_URL`.
 3. Do not point `SUPABASE_URL` at `http://127.0.0.1` in production.

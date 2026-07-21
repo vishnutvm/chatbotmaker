@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { GenieLogo } from '@/components/brand/GenieLogo';
 
 interface AuthShellProps {
   title: string;
@@ -12,9 +13,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
   return (
     <div className="rounded-xl border border-border bg-surface p-8 shadow-sm">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-          G
-        </div>
+        <GenieLogo className="mx-auto mb-4 h-10 w-10 text-[#5A5CE6]" />
         <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
         {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
       </div>

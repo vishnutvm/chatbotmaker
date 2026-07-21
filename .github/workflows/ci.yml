@@ -147,15 +147,16 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
       SUPABASE_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
+      E2E_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
       SUPABASE_URL: http://127.0.0.1:54321
-      # When E2E_SUPABASE_URL secret is set, API verifies real JWTs (JWKS) for auth-flow;
-      # auth-api obtains tokens via Supabase signUp in that mode. If secret is empty,
-      # playwright falls back to HS256 localhost for synthetic signTestJwt.
-      # E2E_JWT_SECRET intentionally omitted — Playwright falls back to SUPABASE_JWT_SECRET.
+      # Hosted URL → JWKS for real auth-flow tokens; dual-mode also accepts HS256 signTestJwt.
+      # Empty secret → Playwright falls back to localhost HS256 only.
       E2E_API_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
       CORS_ORIGINS: http://localhost:3000
       E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
       E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      # Required when Supabase "Confirm email" is enabled (admin-confirm after signup).
+      E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
       CI: true
     steps:
       - uses: actions/checkout@v4

@@ -43,10 +43,13 @@ GitHub Actions job `e2e` runs after build + migrations. Set secrets:
 
 - `E2E_SUPABASE_URL`
 - `E2E_SUPABASE_ANON_KEY`
+- `E2E_SUPABASE_SERVICE_ROLE_KEY` (required when **Confirm email** is enabled)
 
-CI also sets `E2E_API_SUPABASE_URL` to the hosted Supabase URL so the API verifies real JWTs (JWKS) for `auth-flow`. `auth-api` uses Supabase signUp for tokens in JWKS mode, or synthetic HS256 when `E2E_API_SUPABASE_URL` is localhost.
+CI sets `E2E_API_SUPABASE_URL` to the hosted project so the API verifies real JWTs via JWKS for `auth-flow`. The API also accepts synthetic HS256 `signTestJwt` tokens in that mode (dual verification) for `auth-api`.
 
-`E2E_JWT_SECRET` / `SUPABASE_JWT_SECRET` must match between the e2e helper and API when using HS256 (local auth-api without hosted Supabase).
+`E2E_JWT_SECRET` / `SUPABASE_JWT_SECRET` must match between the e2e helper and API (`ci-test-jwt-secret-minimum-32-characters` in CI).
+
+If signup stays on `/signup` with “check your email”, either disable Confirm email in Supabase Auth or provide the service-role secret.
 
 ## Production parity (Railway)
 

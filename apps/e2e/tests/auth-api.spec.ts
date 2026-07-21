@@ -1,33 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { expectApiStatus } from './helpers/api-response';
-import { createSupabaseAccessToken, signOutSupabase } from './helpers/supabase-session';
-import { isApiJwksMode, isSupabaseConfiguredForE2E, signTestJwt } from './helpers/test-jwt';
+import { signTestJwt } from './helpers/test-jwt';
 
 const apiUrl = process.env.E2E_API_URL ?? 'http://localhost:4000';
-
-async function obtainBearerToken(unique: number): Promise<{ token: string; email: string }> {
-  const email = `api-e2e-${unique}@example.com`;
-
-  if (isApiJwksMode()) {
-    if (!isSupabaseConfiguredForE2E()) {
-      throw new Error(
-        'API is in JWKS mode (hosted Supabase) but E2E_SUPABASE_URL / E2E_SUPABASE_ANON_KEY are missing. ' +
-          'Set E2E_API_SUPABASE_URL=http://127.0.0.1:54321 for HS256-only API tests, or provide Supabase secrets.',
-      );
-    }
-    const password = `E2eApi!${unique}`;
-    const { token } = await createSupabaseAccessToken(email, password);
-    return { token, email };
-  }
-
-  const { token } = signTestJwt({ email });
-  return { token, email };
-}
 
 test.describe('Auth API chain', () => {
   test('onboard → session → me succeeds', async ({ request }) => {
     const unique = Date.now();
-    const { token, email } = await obtainBearerToken(unique);
+    const { token, email } = signTestJwt({ email: `api-e2e-${unique}@example.com` });
 
     const onboard = await request.post(`${apiUrl}/api/v1/auth/onboard`, {
       headers: {
@@ -57,10 +37,6 @@ test.describe('Auth API chain', () => {
     const meBody = (await me.json()) as { user: { email: string }; organizations: unknown[] };
     expect(meBody.user.email).toBe(email);
     expect(meBody.organizations.length).toBeGreaterThan(0);
-
-    if (isApiJwksMode()) {
-      await signOutSupabase();
-    }
   });
 
   test('session returns onboarded false without token', async ({ request }) => {
