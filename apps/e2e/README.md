@@ -45,6 +45,8 @@ GitHub Actions job `e2e` runs after build + migrations. Set secrets:
 - `E2E_SUPABASE_ANON_KEY`
 - `E2E_SUPABASE_SERVICE_ROLE_KEY` (required when **Confirm email** is enabled)
 
+CI maps those secrets to `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` **before** `pnpm build` so the client bundle talks to the real project (runtime `next start` env alone is not enough).
+
 CI sets `E2E_API_SUPABASE_URL` to the hosted project so the API verifies real JWTs via JWKS for `auth-flow`. The API also accepts synthetic HS256 `signTestJwt` tokens in that mode (dual verification) for `auth-api`.
 
 `E2E_JWT_SECRET` / `SUPABASE_JWT_SECRET` must match between the e2e helper and API (`ci-test-jwt-secret-minimum-32-characters` in CI).
