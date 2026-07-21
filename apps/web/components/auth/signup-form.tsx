@@ -102,10 +102,14 @@ export function SignupForm() {
   if (finishOnboard || finishing) {
     return (
       <AuthShell title="Signing you in" subtitle="Taking you to your dashboard…" footer={<span>Please wait</span>}>
-        <div className="flex justify-center py-8">
+        <div className="flex justify-center py-8" role="status" aria-label="Signing you in">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
-        {error ? <p className="text-sm text-destructive text-center">{error}</p> : null}
+        {error ? (
+          <p className="text-sm text-destructive text-center" role="alert">
+            {error}
+          </p>
+        ) : null}
       </AuthShell>
     );
   }
@@ -175,14 +179,15 @@ export function SignupForm() {
             onChange={(e) => setPassword(e.target.value)}
             className="h-11"
           />
+          <p className="mt-1.5 text-xs text-muted-foreground">At least 8 characters.</p>
         </div>
         {error ? (
-          <p className="text-sm text-destructive" data-testid="signup-error">
+          <p className="text-sm text-destructive" data-testid="signup-error" role="alert">
             {error}
           </p>
         ) : null}
         {success ? (
-          <p className="text-sm text-success" data-testid="signup-success">
+          <p className="text-sm text-success" data-testid="signup-success" role="status" aria-live="polite">
             {success}
           </p>
         ) : null}

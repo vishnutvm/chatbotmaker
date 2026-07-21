@@ -94,7 +94,7 @@ function LoginForm() {
           </div>
         </div>
         {error ? (
-          <p className="text-sm text-destructive" data-testid="login-error">
+          <p className="text-sm text-destructive" data-testid="login-error" role="alert">
             {error}
           </p>
         ) : null}
@@ -111,7 +111,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <AuthShell title="Sign in" subtitle="Loading…" footer={<span>Please wait</span>}>
-          <div className="flex justify-center py-8">
+          <div className="flex justify-center py-8" role="status" aria-label="Loading">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         </AuthShell>
