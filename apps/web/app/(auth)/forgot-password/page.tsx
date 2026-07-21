@@ -58,8 +58,16 @@ export default function ForgotPasswordPage() {
             className="h-11"
           />
         </div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {success ? <p className="text-sm text-success">{success}</p> : null}
+        {error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {success ? (
+          <p className="text-sm text-success" role="status" aria-live="polite">
+            {success}
+          </p>
+        ) : null}
         <Button type="submit" data-testid="forgot-submit" disabled={loading} className="w-full h-11">
           {loading ? 'Sending…' : 'Send reset link'}
         </Button>

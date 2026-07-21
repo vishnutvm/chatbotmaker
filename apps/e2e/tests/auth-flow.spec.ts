@@ -125,6 +125,9 @@ test.describe('Auth UI full flow (Supabase)', () => {
     await expect(page.getByText('Create your AI assistant')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Customer Support')).toBeVisible();
 
+    // Return to dashboard shell so the sidebar account menu is interactable (wizard layout can obscure it).
+    await page.goto('/dashboard');
+    await expect(page.getByTestId('dashboard-welcome')).toBeVisible({ timeout: 15_000 });
     await page.getByTestId('user-menu-trigger').click();
     await page.getByTestId('logout-button').click();
     await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
