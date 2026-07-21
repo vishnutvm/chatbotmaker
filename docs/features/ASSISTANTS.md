@@ -22,7 +22,7 @@
 ## Out of scope (next)
 
 - Website crawl / sitemap / file upload
-- Public widget CDN (Phase 7) — snippets are placeholders with real assistant ids
+- Public widget CDN (Phase 7) — see `docs/features/WIDGET.md` (`widget.js` foundation; CDN/UI deferred)
 - Conversation persistence / inbox
 - Shared multi-assistant knowledge bases
 
