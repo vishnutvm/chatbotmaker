@@ -121,7 +121,7 @@ test.describe('Auth UI full flow (Supabase)', () => {
 
     await expect(page.getByTestId('dashboard-welcome')).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole('link', { name: /Create assistant/i }).click();
+    await page.getByRole('link', { name: 'Create assistant', exact: true }).click();
     await expect(page.getByText('Create your AI assistant')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Customer Support')).toBeVisible();
 
