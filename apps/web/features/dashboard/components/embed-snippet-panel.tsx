@@ -1,17 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPublishableKeysClient } from '@genie/api-client';
 import type { PublicKeyDto } from '@genie/types';
-import { AlertTriangle, Copy, KeyRound, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Check, Copy, KeyRound, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { buildEmbedSnippet, isValidPublishableKey } from '@/lib/embed-snippet';
 import { getAccessToken, getApiBaseUrl } from '@/lib/supabase';
-import { getWidgetScriptUrl } from '@/lib/widget-config';
+import { getWidgetScriptUrl, isPlaceholderWidgetScriptUrl } from '@/lib/widget-config';
 import { useAuth } from '@/providers/auth-provider';
 
 const SESSION_KEY_PREFIX = 'genie:pk_live:';
+const COPIED_FEEDBACK_MS = 2000;
 
 function sessionStorageKey(orgId: string): string {
   return `${SESSION_KEY_PREFIX}${orgId}`;
@@ -58,8 +59,23 @@ export function EmbedSnippetPanel({
   const [creating, setCreating] = useState(false);
   const [plaintextKey, setPlaintextKey] = useState<string | null>(null);
   const [revealedOnce, setRevealedOnce] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeKeys = useMemo(() => keys.filter((k) => !k.revokedAt), [keys]);
+  const widgetScriptUrl = useMemo(() => getWidgetScriptUrl(), []);
+  const usingPlaceholderScript = useMemo(
+    () => isPlaceholderWidgetScriptUrl(widgetScriptUrl),
+    [widgetScriptUrl],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) {
+        clearTimeout(copiedTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadKeys = useCallback(async () => {
     if (!orgId) return;
@@ -114,7 +130,7 @@ export function EmbedSnippetPanel({
     if (!apiKey || !isValidPublishableKey(apiKey)) return null;
     try {
       return buildEmbedSnippet({
-        widgetScriptUrl: getWidgetScriptUrl(),
+        widgetScriptUrl,
         apiKey,
         assistantId,
         apiBaseUrl: getApiBaseUrl(),
@@ -124,12 +140,17 @@ export function EmbedSnippetPanel({
     } catch {
       return null;
     }
-  }, [plaintextKey, assistantId, assistantName]);
+  }, [plaintextKey, assistantId, assistantName, widgetScriptUrl]);
 
   async function copySnippet() {
-    if (!snippet) return;
+    if (!snippet || usingPlaceholderScript) return;
     try {
       await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      if (copiedTimeoutRef.current) {
+        clearTimeout(copiedTimeoutRef.current);
+      }
+      copiedTimeoutRef.current = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
       toast.success('Embed snippet copied to clipboard');
     } catch {
       toast.error('Could not copy — select the snippet and copy manually');
@@ -172,6 +193,9 @@ export function EmbedSnippetPanel({
       <div
         className="flex items-center justify-center gap-2 rounded-xl border border-border/80 bg-muted/20 p-10 text-sm font-medium text-muted-foreground"
         data-testid="embed-snippet-loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
       >
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
         Loading publishable keys…
@@ -184,6 +208,7 @@ export function EmbedSnippetPanel({
       <div
         className="rounded-xl border border-destructive/30 bg-destructive/5 p-6"
         data-testid="embed-snippet-error"
+        role="alert"
       >
         <p className="text-sm font-semibold text-destructive">Could not load embed settings</p>
         <p className="mt-1 text-sm text-muted-foreground">{error}</p>
@@ -194,7 +219,7 @@ export function EmbedSnippetPanel({
           className="mt-4"
           onClick={() => void loadKeys()}
         >
-          <RefreshCw className="mr-2 h-3.5 w-3.5" />
+          <RefreshCw className="mr-2 h-3.5 w-3.5" aria-hidden />
           Retry
         </Button>
       </div>
@@ -203,7 +228,11 @@ export function EmbedSnippetPanel({
 
   if (!snippet) {
     return (
-      <div className="space-y-4" data-testid="embed-snippet-empty">
+      <div
+        className="space-y-4"
+        data-testid="embed-snippet-empty"
+        aria-busy={creating}
+      >
         <div className="rounded-xl border border-dashed border-border bg-muted/10 p-6">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-card">
@@ -239,7 +268,7 @@ export function EmbedSnippetPanel({
               >
                 {creating ? (
                   <>
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" aria-hidden />
                     Creating…
                   </>
                 ) : (
@@ -254,7 +283,38 @@ export function EmbedSnippetPanel({
   }
 
   return (
-    <div className="space-y-4" data-testid="embed-snippet-ready">
+    <div
+      className="space-y-4"
+      data-testid="embed-snippet-ready"
+      aria-busy={creating}
+    >
+      {usingPlaceholderScript && (
+        <div
+          className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
+          data-testid="embed-snippet-placeholder-warning"
+          role="alert"
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+            <div>
+              <strong className="font-semibold">Widget script not configured.</strong>{' '}
+              Your snippet uses a placeholder script URL and will not load on customer sites until
+              your team sets the production widget script URL. Contact your Genie administrator or
+              see the{' '}
+              <a
+                href="https://github.com/vishnutvm/chatbotmaker-docs/blob/master/Docs/04-infrastructure.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium underline underline-offset-2"
+              >
+                deployment docs
+              </a>
+              .
+            </div>
+          </div>
+        </div>
+      )}
+
       {revealedOnce && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
           <strong className="font-semibold">Save your key now.</strong> The full publishable key is shown
@@ -284,15 +344,28 @@ export function EmbedSnippetPanel({
             variant="ghost"
             className="h-7.5 rounded-lg text-xs font-semibold hover:bg-muted/80"
             onClick={() => void copySnippet()}
+            disabled={usingPlaceholderScript}
             data-testid="embed-snippet-copy"
+            aria-label={copied ? 'Copied to clipboard' : 'Copy embed snippet'}
           >
-            <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            Copy snippet
+            {copied ? (
+              <>
+                <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                Copy snippet
+              </>
+            )}
           </Button>
         </div>
         <pre
           className="overflow-x-auto p-4 text-[12px] font-mono leading-relaxed text-foreground select-all"
           data-testid="embed-snippet-code"
+          tabIndex={0}
+          aria-label="HTML embed snippet"
         >
           {snippet}
         </pre>
@@ -300,8 +373,11 @@ export function EmbedSnippetPanel({
 
       <p className="text-xs text-muted-foreground">
         Paste before <code className="rounded bg-muted px-1 py-0.5">&lt;/body&gt;</code> on any site.
-        Set <code className="rounded bg-muted px-1 py-0.5">NEXT_PUBLIC_WIDGET_SCRIPT_URL</code> in Vercel
-        when your CDN hosts <code className="rounded bg-muted px-1 py-0.5">widget.js</code>.
+        You can also click the snippet above and copy manually (Ctrl+C / Cmd+C).
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Widget script URL:{' '}
+        <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">{widgetScriptUrl}</code>
       </p>
 
       <Button
