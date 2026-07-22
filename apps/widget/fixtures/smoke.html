@@ -2,11 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GenieWidget smoke fixture</title>
+    <style>
+      body {
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        margin: 2rem;
+        background: #f1f5f9;
+        color: #0f172a;
+      }
+    </style>
   </head>
   <body>
     <h1>GenieWidget smoke</h1>
     <p id="status">Loading…</p>
+    <p>Use the teal bubble (bottom-right) to open the chat panel.</p>
     <!-- Relative path works when served from apps/widget (e.g. npx serve .) -->
     <script src="../dist/widget.js"></script>
     <script>
@@ -19,8 +29,11 @@
           GenieWidget.init({
             apiKey: 'key_fixture',
             assistantId: 'asst_fixture',
+            theme: 'auto',
+            title: 'Genie smoke',
           });
-          el.textContent = 'OK — init succeeded (version ' + GenieWidget.version + ')';
+          el.textContent =
+            'OK — bubble+panel mounted (version ' + GenieWidget.version + ')';
         } catch (err) {
           el.textContent = 'FAIL — ' + (err && err.message ? err.message : String(err));
           el.style.color = 'crimson';

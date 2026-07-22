@@ -1,6 +1,6 @@
 {
   "name": "@genie/widget",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
+    "linkedom": "0.18.11",
     "tsup": "^8.4.0",
     "typescript": "^5.7.2"
   }
