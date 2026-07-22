@@ -79,3 +79,13 @@ describe('getWidgetScriptUrl', () => {
     }
   });
 });
+
+describe('isPlaceholderWidgetScriptUrl', () => {
+  it('returns true for default placeholder URL', async () => {
+    const { isPlaceholderWidgetScriptUrl, PLACEHOLDER_WIDGET_SCRIPT_URL } = await import(
+      './widget-config.ts'
+    );
+    assert.equal(isPlaceholderWidgetScriptUrl(PLACEHOLDER_WIDGET_SCRIPT_URL), true);
+    assert.equal(isPlaceholderWidgetScriptUrl('https://cdn.genie.app/widget.js'), false);
+  });
+});

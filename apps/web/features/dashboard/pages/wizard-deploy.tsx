@@ -7,17 +7,19 @@ import { getAccessToken, getApiBaseUrl } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { useWizard } from '@/lib/wizard-context';
 import { EmbedSnippetPanel } from '@/features/dashboard/components/embed-snippet-panel';
+import {
+  DeployComingSoonPanel,
+  DeployMethodPicker,
+  type DeployMethod,
+} from '@/features/dashboard/components/deploy-method-picker';
 import { WizardFooter } from '@/features/dashboard/wizard-footer';
-import { Globe, Link as LinkIcon, Code2, Rocket } from 'lucide-react';
+import { Rocket } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-
-type Method = 'website' | 'share' | 'api';
 
 export default function Step() {
   const { draft, reset, hydrated } = useWizard();
   const { activeOrg } = useAuth();
-  const [method, setMethod] = useState<Method>('website');
+  const [method, setMethod] = useState<DeployMethod>('website');
   const [deploying, setDeploying] = useState(false);
   const router = useRouter();
 
@@ -67,38 +69,22 @@ export default function Step() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Method
-          active={method === 'website'}
-          onClick={() => setMethod('website')}
-          icon={Globe}
-          title="Add to website"
-          desc="Copy embed snippet after deploy."
-        />
-        <Method
-          active={method === 'share'}
-          onClick={() => setMethod('share')}
-          icon={LinkIcon}
-          title="Share a link"
-          desc="Public chat link — coming soon."
-        />
-        <Method
-          active={method === 'api'}
-          onClick={() => setMethod('api')}
-          icon={Code2}
-          title="Use the API"
-          desc="Org-scoped chat API is live after deploy."
-          recommended
-        />
-      </div>
+      <DeployMethodPicker value={method} onChange={setMethod} recommended="website" />
 
       <div className="mt-6 rounded-2xl border border-border bg-surface/80 p-6 shadow-ambient backdrop-blur-sm">
         {method === 'website' && draft.assistantId && (
           <div>
+            <div
+              className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground"
+              data-testid="wizard-deploy-pre-live-callout"
+            >
+              <strong className="font-semibold">Snippet will work after you click Go live.</strong>{' '}
+              You can prepare your publishable key and copy the embed code now, but the widget only
+              responds once this assistant is published.
+            </div>
             <h3 className="text-base font-semibold text-foreground">Website widget</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              After you go live, paste this snippet on any page. Create a publishable key if you do
-              not have one yet.
+              Paste this snippet on any page. Create a publishable key if you do not have one yet.
             </p>
             <div className="mt-4">
               <EmbedSnippetPanel
@@ -112,7 +98,7 @@ export default function Step() {
         )}
 
         {method === 'share' && (
-          <ComingSoon
+          <DeployComingSoonPanel
             title="Shareable chat link"
             body="Public share URLs are not available yet. Deploy to publish the assistant for your organization, then use Test or the assistants API."
           />
@@ -142,67 +128,5 @@ export default function Step() {
         onNext={finish}
       />
     </div>
-  );
-}
-
-function ComingSoon({ title, body }: { title: string; body: string }) {
-  return (
-    <div>
-      <div className="flex items-center gap-2">
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-          Coming soon
-        </span>
-      </div>
-      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
-    </div>
-  );
-}
-
-function Method({
-  active,
-  onClick,
-  icon: Icon,
-  title,
-  desc,
-  recommended,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  desc: string;
-  recommended?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'relative flex flex-col items-start rounded-2xl border p-4 text-left transition-all',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        active
-          ? 'border-primary bg-primary-subtle/40 ring-2 ring-primary/25'
-          : 'border-border bg-surface hover:border-border-strong hover:bg-surface-muted/40',
-      )}
-    >
-      <div
-        className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-xl',
-          active ? 'bg-primary text-primary-foreground' : 'bg-surface-muted text-foreground',
-        )}
-      >
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="mt-3 flex items-center gap-2">
-        <div className="text-sm font-semibold text-foreground">{title}</div>
-        {recommended && (
-          <span className="rounded-full bg-primary-subtle px-1.5 py-0.5 text-[10px] font-medium text-primary">
-            Recommended
-          </span>
-        )}
-      </div>
-      <div className="mt-0.5 text-xs text-muted-foreground">{desc}</div>
-    </button>
   );
 }
