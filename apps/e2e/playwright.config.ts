@@ -66,7 +66,7 @@ export default defineConfig({
   projects: [
     {
       name: 'web',
-      testMatch: /(smoke|auth-guards|create-assistant)\.spec\.ts/,
+      testMatch: /(smoke|auth-guards|create-assistant|embed-snippet)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: dashboardUrl,
@@ -74,7 +74,7 @@ export default defineConfig({
     },
     {
       name: 'full-stack',
-      testMatch: /(auth-api|auth-flow)\.spec\.ts/,
+      testMatch: /(auth-api|auth-flow|embed-snippet)\.spec\.ts/,
       timeout: 120_000,
       use: {
         ...devices['Desktop Chrome'],

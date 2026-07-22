@@ -6,6 +6,7 @@ import { createAssistantsClient } from '@genie/api-client';
 import { getAccessToken, getApiBaseUrl } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { useWizard } from '@/lib/wizard-context';
+import { EmbedSnippetPanel } from '@/features/dashboard/components/embed-snippet-panel';
 import { WizardFooter } from '@/features/dashboard/wizard-footer';
 import { Globe, Link as LinkIcon, Code2, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
@@ -62,7 +63,7 @@ export default function Step() {
         <p className="mt-1.5 text-sm text-muted-foreground">
           Publish{' '}
           <span className="font-medium text-foreground">{draft.name || 'your assistant'}</span> to
-          make it live for your team. Public widget embed ships in a later release.
+          make it live, then copy the website embed snippet below.
         </p>
       </div>
 
@@ -72,7 +73,7 @@ export default function Step() {
           onClick={() => setMethod('website')}
           icon={Globe}
           title="Add to website"
-          desc="Widget embed — coming soon."
+          desc="Copy embed snippet after deploy."
         />
         <Method
           active={method === 'share'}
@@ -92,11 +93,22 @@ export default function Step() {
       </div>
 
       <div className="mt-6 rounded-2xl border border-border bg-surface/80 p-6 shadow-ambient backdrop-blur-sm">
-        {method === 'website' && (
-          <ComingSoon
-            title="Website widget"
-            body="The public CDN widget ships in Phase 7. For now, deploy to mark this assistant live and test it from the dashboard."
-          />
+        {method === 'website' && draft.assistantId && (
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Website widget</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              After you go live, paste this snippet on any page. Create a publishable key if you do
+              not have one yet.
+            </p>
+            <div className="mt-4">
+              <EmbedSnippetPanel
+                assistantId={draft.assistantId}
+                assistantName={draft.name || undefined}
+                requireLive={false}
+                isLive={false}
+              />
+            </div>
+          </div>
         )}
 
         {method === 'share' && (

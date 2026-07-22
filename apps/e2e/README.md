@@ -11,6 +11,7 @@ Playwright end-to-end tests for `apps/web` + `apps/api`.
 | `auth-api.spec.ts` | API + Postgres | onboard → session → me |
 | `auth-flow.spec.ts` | Supabase + API + Postgres | Full UI signup/login/logout |
 | `create-assistant.spec.ts` | Auth session | Wizard UI (skips if logged out) |
+| `embed-snippet.spec.ts` | API + Postgres | Deploy route guard + public-keys API |
 
 ## Run locally
 
@@ -53,9 +54,9 @@ CI sets `E2E_API_SUPABASE_URL` to the hosted project so the API verifies real JW
 
 If signup stays on `/signup` with “check your email”, either disable Confirm email in Supabase Auth or provide the service-role secret.
 
-## Production parity (Railway)
+## Production parity (Cloud Run)
 
 After auth or deploy changes, verify production config matches `docs/deployment/AUTH_DEPLOY_CHECKLIST.md`:
 
-- Railway `CORS_ORIGINS` includes your Vercel URL
+- Cloud Run `CORS_ORIGINS` includes your Vercel URL
 - Supabase redirect URLs point to `apps/web` domain
