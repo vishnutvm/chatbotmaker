@@ -44,8 +44,8 @@ Cloudflare
     +----------------------+----------------------+
     |                      |                      |
     v                      v                      v
-Marketing (Vercel)    Dashboard (Vercel)    Widget CDN (R2)
-    |                      |               cdn.<domain>/widget.js
+Marketing (Vercel)    Dashboard (Vercel)    Widget CDN (GCS)
+    |                      |               storage.googleapis.com/…/widget.js
     +----------+-----------+
                |
                v
@@ -90,10 +90,15 @@ Marketing (Vercel)    Dashboard (Vercel)    Widget CDN (R2)
 
 ### Cloudflare
 
-- DNS for custom domains
-- CDN for static assets and **widget.js** (R2 origin + custom domain `cdn.<domain>`)
-- Deploy: `scripts/deploy-widget-cdn.sh` — see `docs/deployment/WIDGET_CDN.md` and ADR 0005
-- WAF rules (production)
+- DNS for custom domains (optional)
+- CDN/WAF for marketing domains when used
+- **Widget.js** is hosted on **GCS** (ADR 0006), not R2 — see `docs/deployment/WIDGET_CDN.md`
+
+### Google Cloud Storage (Widget CDN)
+
+- Dedicated bucket for `widget.js`
+- Deploy: `scripts/deploy-widget-cdn.sh` — ADR 0006
+- Optional Cloud CDN + custom domain later
 
 ### OpenAI
 

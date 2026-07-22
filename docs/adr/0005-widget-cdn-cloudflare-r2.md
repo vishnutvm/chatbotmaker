@@ -1,6 +1,6 @@
 # ADR 0005 — Widget CDN via Cloudflare R2
 
-- **Status:** accepted
+- **Status:** superseded by [ADR 0006 — Widget CDN via GCS](./0006-widget-cdn-gcs.md)
 - **Date:** 2026-07-22
 - **Phase:** 7 — Widget
 

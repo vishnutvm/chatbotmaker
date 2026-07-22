@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
-# Build apps/widget and publish dist/widget.js to Cloudflare R2.
+# Build apps/widget and publish dist/widget.js to Google Cloud Storage.
 # Docs: docs/deployment/WIDGET_CDN.md
 #
 # Required env (unless --dry-run without upload):
-#   CLOUDFLARE_API_TOKEN
-#   CLOUDFLARE_ACCOUNT_ID
+#   GCP_PROJECT_ID
 # Optional:
-#   CLOUDFLARE_R2_BUCKET      (default: genie-widget)
-#   CLOUDFLARE_R2_OBJECT_KEY  (default: widget.js)
-#   WIDGET_CDN_PUBLIC_URL     (printed after success; curled when set)
-#   SKIP_BUILD=1              (reuse existing dist/widget.js)
+#   GCS_WIDGET_BUCKET       (default: genie-widget)
+#   GCS_WIDGET_OBJECT_KEY   (default: widget.js)
+#   GCS_WIDGET_LOCATION     (default: asia-south1 — used only when creating bucket)
+#   WIDGET_CDN_PUBLIC_URL   (printed after success; curled when set)
+#   SKIP_BUILD=1            (reuse existing dist/widget.js)
+#   SKIP_BUCKET_CREATE=1    (do not create bucket if missing)
+#
+# Auth: gcloud application-default / user credentials (gcloud auth login)
 
 set -euo pipefail
 
@@ -32,13 +35,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-BUCKET="${CLOUDFLARE_R2_BUCKET:-genie-widget}"
-OBJECT_KEY="${CLOUDFLARE_R2_OBJECT_KEY:-widget.js}"
+BUCKET="${GCS_WIDGET_BUCKET:-genie-widget}"
+OBJECT_KEY="${GCS_WIDGET_OBJECT_KEY:-widget.js}"
+LOCATION="${GCS_WIDGET_LOCATION:-asia-south1}"
 BUNDLE="$REPO_ROOT/apps/widget/dist/widget.js"
 PUBLIC_URL="${WIDGET_CDN_PUBLIC_URL:-}"
-WRANGLER_CONFIG="$REPO_ROOT/apps/widget/wrangler.toml"
+GS_URI="gs://${BUCKET}/${OBJECT_KEY}"
 
-echo "==> Genie widget CDN deploy (Cloudflare R2)"
+echo "==> Genie widget CDN deploy (Google Cloud Storage)"
+echo "    project: $GCP_PROJECT_ID"
 echo "    bucket:  $BUCKET"
 echo "    object:  $OBJECT_KEY"
 echo "    dry-run: $DRY_RUN"
@@ -60,38 +65,63 @@ BYTES="$(wc -c < "$BUNDLE" | tr -d ' ')"
 echo "==> Bundle: $BUNDLE ($BYTES bytes)"
 
 missing=()
-[[ -z "${CLOUDFLARE_API_TOKEN:-}" ]] && missing+=("CLOUDFLARE_API_TOKEN")
-[[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]] && missing+=("CLOUDFLARE_ACCOUNT_ID")
+[[ -z "${GCP_PROJECT_ID:-}" ]] && missing+=("GCP_PROJECT_ID")
+
+if ! command -v gcloud >/dev/null 2>&1; then
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "==> Dry-run: gcloud not on PATH (install / use WSL)"
+  else
+    missing+=("gcloud(CLI)")
+  fi
+fi
 
 if [[ ${#missing[@]} -gt 0 ]]; then
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "==> Dry-run: would require env: ${missing[*]}"
+    echo "==> Dry-run: would require: ${missing[*]}"
     echo "==> Dry-run OK (build + path checks only)"
     exit 0
   fi
-  echo "ERROR: missing required env: ${missing[*]}" >&2
+  echo "ERROR: missing required: ${missing[*]}" >&2
   echo "See docs/deployment/WIDGET_CDN.md" >&2
   exit 1
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  echo "==> Dry-run: would upload to r2://$BUCKET/$OBJECT_KEY"
+  echo "==> Dry-run: would upload to $GS_URI"
   echo "==> Dry-run OK"
   exit 0
 fi
 
-echo "==> Uploading to R2 via pinned wrangler (apps/widget)"
-pnpm --filter @genie/widget exec wrangler r2 object put "${BUCKET}/${OBJECT_KEY}" \
-  --file="$BUNDLE" \
-  --content-type="application/javascript; charset=utf-8" \
-  --cache-control="public, max-age=300, stale-while-revalidate=86400" \
-  --config="$WRANGLER_CONFIG" \
-  --remote
+echo "==> Using GCP project $GCP_PROJECT_ID"
+gcloud config set project "$GCP_PROJECT_ID" >/dev/null
 
+if [[ "${SKIP_BUCKET_CREATE:-0}" != "1" ]]; then
+  if ! gcloud storage buckets describe "gs://${BUCKET}" >/dev/null 2>&1; then
+    echo "==> Creating bucket gs://${BUCKET} ($LOCATION)"
+    gcloud storage buckets create "gs://${BUCKET}" \
+      --project="$GCP_PROJECT_ID" \
+      --location="$LOCATION" \
+      --uniform-bucket-level-access
+  fi
+fi
+
+echo "==> Uploading $GS_URI"
+gcloud storage cp "$BUNDLE" "$GS_URI" \
+  --cache-control="public, max-age=300, stale-while-revalidate=86400" \
+  --content-type="application/javascript; charset=utf-8"
+
+echo "==> Granting public object read (allUsers:objectViewer on bucket)"
+gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" \
+  --member=allUsers \
+  --role=roles/storage.objectViewer \
+  >/dev/null
+
+DEFAULT_PUBLIC="https://storage.googleapis.com/${BUCKET}/${OBJECT_KEY}"
 echo
-echo "==> Published r2://${BUCKET}/${OBJECT_KEY}"
+echo "==> Published $GS_URI"
+echo "==> Default public URL: $DEFAULT_PUBLIC"
 if [[ -n "$PUBLIC_URL" ]]; then
-  echo "==> Public URL: $PUBLIC_URL"
+  echo "==> Configured WIDGET_CDN_PUBLIC_URL: $PUBLIC_URL"
   echo "    Set Vercel NEXT_PUBLIC_WIDGET_SCRIPT_URL to this value."
   if command -v curl >/dev/null 2>&1; then
     echo "==> Verifying public URL"
@@ -99,6 +129,5 @@ if [[ -n "$PUBLIC_URL" ]]; then
     echo "==> Public URL reachable (HTTP 2xx)"
   fi
 else
-  echo "==> Set WIDGET_CDN_PUBLIC_URL next time to print/verify the public URL."
-  echo "    Pattern: https://cdn.<your-domain>/widget.js"
+  echo "==> Set WIDGET_CDN_PUBLIC_URL=$DEFAULT_PUBLIC (and Vercel NEXT_PUBLIC_WIDGET_SCRIPT_URL)."
 fi

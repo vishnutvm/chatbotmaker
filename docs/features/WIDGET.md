@@ -1,6 +1,6 @@
 # Embeddable Widget (Phase 7)
 
-**Status:** In progress — CDN hosting path (Cloudflare R2) + `pk_live` auth + dashboard embed snippet  
+**Status:** In progress — CDN hosting path (GCS) + `pk_live` auth + dashboard embed snippet  
 **Package:** `apps/widget` (`@genie/widget`)  
 **Roadmap:** Phase 7 — Widget
 
@@ -13,7 +13,7 @@
 | Bubble + panel | Floating FAB + Shadow DOM chat panel |
 | **`pk_live` auth** | Client validates `pk_live_…`; calls public bootstrap with `X-Genie-Public-Key` |
 | **Dashboard embed snippet** | Deploy tab + wizard — create `pk_live`, copy HTML snippet |
-| **Cloudflare CDN path** | R2 origin + deploy scripts + CI artifact; set `NEXT_PUBLIC_WIDGET_SCRIPT_URL` when live |
+| **GCS CDN path** | Dedicated bucket + deploy scripts + CI artifact; set `NEXT_PUBLIC_WIDGET_SCRIPT_URL` when live |
 | Themes | `theme: 'light' \| 'dark' \| 'auto'` (default `auto`) |
 | Isolation | No Next.js / dashboard / React runtime in the bundle |
 | Smoke | `fixtures/smoke.html` + `node --test scripts/widget.test.mjs` after build |
@@ -35,7 +35,7 @@
 
 **Notes**
 
-- **CDN host (Cloudflare R2):** see `docs/deployment/WIDGET_CDN.md` and ADR `docs/adr/0005-widget-cdn-cloudflare-r2.md`. Until secrets are configured, dashboard defaults to placeholder `https://cdn.example.com/widget.js`.
+- **CDN host (GCS):** see `docs/deployment/WIDGET_CDN.md` and ADR `docs/adr/0006-widget-cdn-gcs.md`. Until GCP auth is configured, dashboard defaults to placeholder `https://cdn.example.com/widget.js`.
 - **Production URL pattern:** `https://cdn.<your-domain>/widget.js` → set as `NEXT_PUBLIC_WIDGET_SCRIPT_URL` in Vercel.
 - **Key issuance:** owner/admin `POST /api/v1/organizations/:id/public-keys` (see `docs/api/publishable-keys.md`).
 - **Dashboard UI:** `apps/web` Deploy tab (`/dashboard/assistants/:id/deploy`) — `EmbedSnippetPanel` lists keys, creates `pk_live`, builds snippet via `buildEmbedSnippet`.
@@ -78,12 +78,12 @@ pnpm --filter @genie/widget test
 pnpm --filter @genie/widget typecheck
 pnpm --filter @genie/web test   # embed-snippet unit tests
 
-# Publish to Cloudflare R2 (requires Cloudflare env — see WIDGET_CDN.md)
+# Publish to GCS (requires gcloud auth — see WIDGET_CDN.md)
 ./scripts/deploy-widget-cdn.sh
 # PowerShell: .\scripts\deploy-widget-cdn.ps1
 ```
 
-CI: `.github/workflows/deploy-widget-cdn.yml` builds and uploads a `widget.js` artifact on `main`; R2 publish is gated on `ENABLE_WIDGET_CDN_DEPLOY` + Cloudflare secrets.
+CI: `.github/workflows/deploy-widget-cdn.yml` builds and uploads a `widget.js` artifact on `main`; GCS publish is gated on `ENABLE_WIDGET_CDN_DEPLOY` + GCP secrets.
 
 ## Out of scope (later P7 P0s)
 
@@ -98,4 +98,4 @@ CI: `.github/workflows/deploy-widget-cdn.yml` builds and uploads a `widget.js` a
 4. **Header auth** — never put `pk_live` in query strings.
 5. **Tenant from key** — server derives org from hashed key; assistant must be `live` and same-org.
 6. **Snippet builder in web lib** — pure function `buildEmbedSnippet`; no secrets in repo.
-7. **CDN = Cloudflare R2** — blueprint-aligned; see ADR 0005.
+7. **CDN = GCS** — consolidated with Cloud Run ops; see ADR 0006 (supersedes Cloudflare R2 ADR 0005).

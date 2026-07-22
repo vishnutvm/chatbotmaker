@@ -9,12 +9,13 @@ pnpm --filter @genie/widget build
 # → dist/widget.js (minified IIFE, global `GenieWidget`)
 ```
 
-## CDN (Cloudflare R2)
+## CDN (Google Cloud Storage)
 
 Production embed script URL pattern:
 
 ```text
-https://cdn.<your-domain>/widget.js
+https://storage.googleapis.com/<bucket>/widget.js
+# or later: https://cdn.<your-domain>/widget.js
 ```
 
 Publish:
@@ -25,7 +26,7 @@ Publish:
 ./scripts/deploy-widget-cdn.ps1
 ```
 
-See [docs/deployment/WIDGET_CDN.md](../../docs/deployment/WIDGET_CDN.md) and [ADR 0005](../../docs/adr/0005-widget-cdn-cloudflare-r2.md).
+See [docs/deployment/WIDGET_CDN.md](../../docs/deployment/WIDGET_CDN.md) and [ADR 0006](../../docs/adr/0006-widget-cdn-gcs.md).
 
 Dashboard snippets read `NEXT_PUBLIC_WIDGET_SCRIPT_URL` (placeholder until CDN is live).
 
