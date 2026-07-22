@@ -6,6 +6,10 @@ export {
 } from './organizations';
 export { GenieAiClient, createAiClient } from './ai';
 export { GenieAssistantsClient, createAssistantsClient } from './assistants';
+export {
+  GeniePublishableKeysClient,
+  createPublishableKeysClient,
+} from './publishable-keys';
 export { createConversationsClient, type ConversationsClient } from './conversations';
 
 import { GenieApiClient } from './client';

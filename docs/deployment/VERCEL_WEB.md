@@ -31,9 +31,10 @@ Set in Vercel → Project → Settings → Environment Variables:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Yes | NestJS API URL (e.g. Railway production URL) |
+| `NEXT_PUBLIC_API_URL` | Yes | NestJS API URL (Cloud Run: `https://genie-api-dev-509947078893.asia-south1.run.app`) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon/public key |
+| `NEXT_PUBLIC_WIDGET_SCRIPT_URL` | No | Public `widget.js` URL for dashboard embed snippets (default placeholder until CDN) |
 
 Copy from `apps/web/.env.example` for local development.
 
