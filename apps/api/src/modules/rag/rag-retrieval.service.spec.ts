@@ -137,5 +137,50 @@ describe('RagRetrievalService', () => {
       expect(result).toEqual([]);
       expect(chunksRepository.similaritySearch).not.toHaveBeenCalled();
     });
+
+    it('returns empty array when embed throws a non-Error value', async () => {
+      aiService.embed.mockRejectedValue('string failure');
+
+      const result = await service.retrieveForQuery(baseInput);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('formatKnowledgeContext edges', () => {
+    it('uses Knowledge title when metadata is missing or non-object', () => {
+      const result = service.formatKnowledgeContext([
+        { id: '1', content: 'Plain chunk', metadata: null, similarity: 0.5 },
+        { id: '2', content: 'Array meta', metadata: [] as never, similarity: 0.4 },
+      ]);
+
+      expect(result).toContain('### Knowledge');
+      expect(result).toContain('Plain chunk');
+    });
+
+    it('skips empty content chunks and stops when budget is exhausted', () => {
+      const result = service.formatKnowledgeContext(
+        [
+          { id: '1', content: '', metadata: { sourceName: 'Empty' }, similarity: 0.9 },
+          {
+            id: '2',
+            content: 'ABCDEFGHIJ',
+            metadata: { sourceName: 'First' },
+            similarity: 0.8,
+          },
+          {
+            id: '3',
+            content: 'SHOULD_NOT_APPEAR',
+            metadata: { sourceName: 'Second' },
+            similarity: 0.7,
+          },
+        ],
+        10,
+      );
+
+      expect(result).toContain('### First');
+      expect(result).not.toContain('SHOULD_NOT_APPEAR');
+      expect(result).not.toContain('### Empty');
+    });
   });
 });

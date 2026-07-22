@@ -55,4 +55,27 @@ describe('AiUsageRepository', () => {
       }),
     ).resolves.toBeUndefined();
   });
+
+  it('logs unknown when persistence rejects a non-Error value', async () => {
+    const create = jest.fn().mockRejectedValue('db-string-failure');
+    const repo = new AiUsageRepository({
+      aiUsageEvent: { create },
+    } as unknown as PrismaService);
+
+    await expect(
+      repo.create({
+        organizationId: 'org-1',
+        userId: 'user-1',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        operation: 'chat_stream',
+        promptTokens: null,
+        completionTokens: null,
+        totalTokens: null,
+        latencyMs: null,
+        status: 'success',
+        errorCode: null,
+      }),
+    ).resolves.toBeUndefined();
+  });
 });

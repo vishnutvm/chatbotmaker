@@ -387,4 +387,106 @@ describe('AiService', () => {
 
     expect(events.map((e) => e.event)).toEqual(['meta', 'delta']);
   });
+
+  it('swallows AbortError from the provider without emitting SSE error', async () => {
+    const abortErr = new Error('aborted');
+    abortErr.name = 'AbortError';
+    aiProvider.stream.mockImplementation(async function* () {
+      throw abortErr;
+    });
+
+    const events = [];
+    for await (const event of service.stream(userId, orgId, {
+      messages: [{ role: 'user', content: 'Hi' }],
+    })) {
+      events.push(event);
+    }
+
+    expect(events.map((e) => e.event)).toEqual(['meta']);
+    expect(usageRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('swallows provider throws when the abort signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    aiProvider.stream.mockImplementation(async function* () {
+      throw new Error('client gone');
+    });
+
+    const events = [];
+    for await (const event of service.stream(
+      userId,
+      orgId,
+      { messages: [{ role: 'user', content: 'Hi' }] },
+      controller.signal,
+    )) {
+      events.push(event);
+    }
+
+    expect(events.map((e) => e.event)).toEqual(['meta']);
+  });
+
+  it('maps ServiceUnavailableException from provider.chat to AI_NOT_CONFIGURED usage', async () => {
+    aiProvider.chat.mockRejectedValue(
+      new ServiceUnavailableException({
+        statusCode: 503,
+        code: 'AI_NOT_CONFIGURED',
+        message: 'AI provider is not configured',
+      }),
+    );
+
+    await expect(
+      service.complete(userId, orgId, { messages: [{ role: 'user', content: 'Hi' }] }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    await Promise.resolve();
+    expect(usageRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'error',
+        errorCode: 'AI_NOT_CONFIGURED',
+      }),
+    );
+  });
+
+  it('maps unexpected complete failures to AI_ERROR usage code', async () => {
+    aiProvider.chat.mockRejectedValue(new Error('socket hang up'));
+
+    await expect(
+      service.complete(userId, orgId, { messages: [{ role: 'user', content: 'Hi' }] }),
+    ).rejects.toThrow('socket hang up');
+
+    await Promise.resolve();
+    expect(usageRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'error',
+        errorCode: 'AI_ERROR',
+      }),
+    );
+  });
+
+  it('maps ServiceUnavailableException mid-stream to AI_NOT_CONFIGURED SSE', async () => {
+    aiProvider.stream.mockImplementation(async function* () {
+      throw new ServiceUnavailableException({
+        statusCode: 503,
+        code: 'AI_NOT_CONFIGURED',
+        message: 'AI provider is not configured',
+      });
+    });
+
+    const events = [];
+    for await (const event of service.stream(userId, orgId, {
+      messages: [{ role: 'user', content: 'Hi' }],
+    })) {
+      events.push(event);
+    }
+
+    expect(events.at(-1)).toEqual({
+      event: 'error',
+      data: {
+        statusCode: 503,
+        code: 'AI_NOT_CONFIGURED',
+        message: 'AI provider is not configured',
+      },
+    });
+  });
 });
