@@ -22,7 +22,7 @@
 ## Out of scope (next)
 
 - Website crawl / sitemap / file upload
-- Public widget CDN (Phase 7) — see `docs/features/WIDGET.md` (`widget.js` foundation; CDN/UI deferred)
+- Public widget CDN (Phase 7) — see `docs/features/WIDGET.md` (`widget.js` + bubble/panel; CDN/`pk_live` deferred)
 - Conversation persistence / inbox
 - Shared multi-assistant knowledge bases
 

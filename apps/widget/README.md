@@ -14,9 +14,16 @@ pnpm --filter @genie/widget build
 ```html
 <script src="/path/to/widget.js"></script>
 <script>
-  GenieWidget.init({ apiKey: '…', assistantId: '…' });
+  GenieWidget.init({
+    apiKey: '…',
+    assistantId: '…',
+    theme: 'auto',
+    title: 'Chat',
+  });
 </script>
 ```
+
+Public API: `init`, `open`, `close`, `destroy`, `version`.
 
 See [docs/features/WIDGET.md](../../docs/features/WIDGET.md) for the embed contract.
 
