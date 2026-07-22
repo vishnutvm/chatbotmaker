@@ -583,6 +583,35 @@ describe('AssistantsService', () => {
     });
   });
 
+  describe('getLivePublicDisplay', () => {
+    it('returns display fields for live assistants', async () => {
+      repository.findById.mockResolvedValue({
+        ...baseAssistant,
+        status: 'live',
+        deployedAt: new Date('2026-01-03T00:00:00.000Z'),
+      } as never);
+
+      const display = await service.getLivePublicDisplay(orgId, assistantId);
+
+      expect(display).toEqual({
+        assistantId,
+        organizationId: orgId,
+        name: 'Acme Support',
+        welcomeMessage: 'Hi! How can I help you today?',
+        appearance: baseAssistant.appearance,
+      });
+      expect(display).not.toHaveProperty('instructions');
+    });
+
+    it('returns null when assistant is missing or not live', async () => {
+      repository.findById.mockResolvedValue(null);
+      await expect(service.getLivePublicDisplay(orgId, assistantId)).resolves.toBeNull();
+
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      await expect(service.getLivePublicDisplay(orgId, assistantId)).resolves.toBeNull();
+    });
+  });
+
   describe('list + get + not-found paths', () => {
     it('lists assistants for the organization', async () => {
       repository.findManyByOrganization.mockResolvedValue([baseAssistant] as never);

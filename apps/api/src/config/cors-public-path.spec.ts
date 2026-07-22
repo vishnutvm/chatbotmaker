@@ -26,4 +26,15 @@ describe('isPublicApiPath', () => {
       }),
     ).toBe(true);
   });
+
+  it('matches exact public root and falls back to url when path fields empty', () => {
+    expect(isPublicApiPath({ path: '/api/v1/public', originalUrl: '', url: '' })).toBe(true);
+    expect(
+      isPublicApiPath({
+        path: '',
+        originalUrl: '',
+        url: '/api/v1/public/widget/bootstrap',
+      }),
+    ).toBe(true);
+  });
 });

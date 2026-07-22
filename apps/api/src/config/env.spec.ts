@@ -4,6 +4,7 @@ import {
   getDatabaseUrl,
   getDirectDatabaseUrl,
   getOpenAiApiKey,
+  getPublishableKeyPepper,
   getRequiredEnv,
   getSupabaseJwtSecret,
   getSupabaseUrl,
@@ -147,6 +148,7 @@ describe('env helpers', () => {
     delete process.env.CORS_ORIGINS;
     delete process.env.WEB_APP_URL;
     delete process.env.APP_WEB_URL;
+    delete process.env.PUBLISHABLE_KEY_PEPPER;
 
     expect(getDatabaseUrl()).toContain('127.0.0.1:5432');
     expect(getDirectDatabaseUrl()).toBe(getDatabaseUrl());
@@ -155,6 +157,13 @@ describe('env helpers', () => {
     expect(getOpenAiApiKey()).toBeUndefined();
     expect(getCorsOrigins()).toEqual(['http://localhost:3001', 'http://localhost:3000']);
     expect(getWebAppOrigin()).toBe('http://localhost:3001');
+    expect(getPublishableKeyPepper()).toContain('dev-only-publishable-key-pepper');
+  });
+
+  it('throws for missing publishable key pepper in production', () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.PUBLISHABLE_KEY_PEPPER;
+    expect(() => getPublishableKeyPepper()).toThrow(/PUBLISHABLE_KEY_PEPPER is required/);
   });
 
   it('prefers WEB_APP_URL and parses CORS origins', () => {

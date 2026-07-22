@@ -22,6 +22,7 @@ module.exports = {
     '!src/**/strategies/**/*.ts',
     '!src/common/types/**/*.ts',
     '!src/common/decorators/**/*.ts',
+    '!src/**/decorators/**/*.ts',
     '!src/infrastructure/storage/**/*.ts',
     '!src/infrastructure/database/prisma.service.ts',
   ],
