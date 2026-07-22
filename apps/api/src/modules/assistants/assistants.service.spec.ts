@@ -827,6 +827,306 @@ describe('AssistantsService', () => {
 
       fetchMock.mockRestore();
     });
+
+    it('rejects URL hosts that Node URL treats as invalid without fetching', async () => {
+      // Node's URL parser rejects octet > 255 before isSafePublicHttpUrl's ipv4 branch;
+      // these still fail closed via `new URL` catch (same user-visible result).
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockImplementation((data) =>
+        Promise.resolve({ id: 'ks-octet', createdAt, updatedAt, ...data } as never),
+      );
+      const fetchMock = jest.spyOn(globalThis, 'fetch').mockImplementation(() => {
+        throw new Error('fetch should not be called');
+      });
+
+      for (const url of ['http://256.1.1.1/', 'http://1.2.3.999/', 'not a url']) {
+        await service.addKnowledge(userId, orgId, assistantId, {
+          type: 'url',
+          name: 'Bad octets',
+          url,
+        });
+      }
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      fetchMock.mockRestore();
+    });
+
+    it('reads capped stream bodies that finish under the limit', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockImplementation((data) =>
+        Promise.resolve({ id: 'ks-small-stream', createdAt, updatedAt, ...data } as never),
+      );
+      repository.updateKnowledgeSource.mockResolvedValue({
+        id: 'ks-small-stream',
+        status: 'ready',
+      } as never);
+
+      const fetchMock = jest.spyOn(global, 'fetch' as never) as jest.SpyInstance;
+      let reads = 0;
+      fetchMock.mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        body: {
+          getReader: () => ({
+            read: async () => {
+              reads += 1;
+              if (reads === 1) {
+                return {
+                  done: false,
+                  value: new TextEncoder().encode('<p>streamed ok</p>'),
+                };
+              }
+              return { done: true, value: undefined };
+            },
+            cancel: async () => undefined,
+          }),
+        },
+      });
+
+      const result = await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Small stream',
+        url: 'https://example.com/small',
+      });
+
+      expect(result.status).toBe('pending');
+      expect(repository.createKnowledgeSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('streamed ok'),
+          status: 'pending',
+        }),
+      );
+      fetchMock.mockRestore();
+    });
+
+    it('marks URL knowledge failed when the body reader throws', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockImplementation((data) =>
+        Promise.resolve({ id: 'ks-reader-fail', createdAt, updatedAt, ...data } as never),
+      );
+
+      const fetchMock = jest.spyOn(global, 'fetch' as never) as jest.SpyInstance;
+      fetchMock.mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        body: {
+          getReader: () => ({
+            read: async () => {
+              throw new Error('stream broken');
+            },
+            cancel: async () => undefined,
+          }),
+        },
+      });
+
+      const result = await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Broken stream',
+        url: 'https://example.com/broken',
+      });
+
+      expect(result.status).toBe('failed');
+      fetchMock.mockRestore();
+    });
+
+    it('marks URL knowledge failed when response.text rejects', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockImplementation((data) =>
+        Promise.resolve({ id: 'ks-text-fail', createdAt, updatedAt, ...data } as never),
+      );
+
+      const fetchMock = jest.spyOn(global, 'fetch' as never) as jest.SpyInstance;
+      fetchMock.mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        body: null,
+        text: async () => {
+          throw new Error('text failed');
+        },
+      });
+
+      const result = await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Text fail',
+        url: 'https://example.com/text-fail',
+      });
+
+      expect(result.status).toBe('failed');
+      fetchMock.mockRestore();
+    });
+  });
+
+  describe('ingest + prompt + appearance edges', () => {
+    it('logs and swallows background ingest failures', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockResolvedValue({
+        id: 'ks-ingest-fail',
+        organizationId: orgId,
+        assistantId,
+        type: 'text',
+        name: 'Policy',
+        status: 'pending',
+        content: 'Hello knowledge',
+        url: null,
+        createdAt,
+        updatedAt,
+      } as never);
+      ragIngestion.ingestKnowledgeSource.mockRejectedValue(new Error('embed down'));
+
+      await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'text',
+        name: 'Policy',
+        content: 'Hello knowledge',
+      });
+
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+
+      expect(ragIngestion.ingestKnowledgeSource).toHaveBeenCalled();
+      expect(repository.updateKnowledgeSource).not.toHaveBeenCalledWith('ks-ingest-fail', {
+        status: 'ready',
+      });
+    });
+
+    it('marks knowledge failed when scheduled ingest receives empty content', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockResolvedValue({
+        id: 'ks-empty',
+        organizationId: orgId,
+        assistantId,
+        type: 'text',
+        name: 'Empty',
+        status: 'pending',
+        content: '   ',
+        url: null,
+        createdAt,
+        updatedAt,
+      } as never);
+      repository.updateKnowledgeSource.mockResolvedValue({
+        id: 'ks-empty',
+        status: 'failed',
+      } as never);
+
+      await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'text',
+        name: 'Empty',
+        content: 'valid input that repo replaces',
+      });
+
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+
+      expect(repository.updateKnowledgeSource).toHaveBeenCalledWith('ks-empty', {
+        status: 'failed',
+      });
+      expect(ragIngestion.ingestKnowledgeSource).not.toHaveBeenCalled();
+    });
+
+    it('throws when listing knowledge for a missing assistant', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(service.listKnowledge(userId, orgId, assistantId)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('uses instructions-only dump prompt when no knowledge sources exist', async () => {
+      repository.findByIdWithReadyKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        knowledgeSources: [],
+      } as never);
+      ragRetrieval.retrieveForQuery.mockResolvedValue([]);
+      ragRetrieval.formatKnowledgeContext.mockReturnValue('');
+      aiService.complete.mockResolvedValue({
+        id: 'c1',
+        organizationId: orgId,
+        model: 'gpt-4o-mini',
+        content: 'hi',
+        finishReason: 'stop',
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      });
+
+      await service.chat(userId, orgId, assistantId, {
+        messages: [{ role: 'user', content: 'hello' }],
+      });
+
+      expect(aiService.complete).toHaveBeenCalledWith(
+        userId,
+        orgId,
+        expect.objectContaining({
+          systemPrompt: baseAssistant.instructions,
+        }),
+      );
+    });
+
+    it('uses instructions-only dump prompt when knowledge sources have empty content', async () => {
+      repository.findByIdWithReadyKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        knowledgeSources: [
+          {
+            id: 'ks-blank',
+            organizationId: orgId,
+            assistantId,
+            type: 'text',
+            name: 'Blank',
+            status: 'ready',
+            content: '',
+            url: null,
+            createdAt,
+            updatedAt,
+          },
+        ],
+      } as never);
+      ragRetrieval.retrieveForQuery.mockResolvedValue([]);
+      ragRetrieval.formatKnowledgeContext.mockReturnValue('');
+      aiService.complete.mockResolvedValue({
+        id: 'c2',
+        organizationId: orgId,
+        model: 'gpt-4o-mini',
+        content: 'hi',
+        finishReason: 'stop',
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      });
+
+      await service.chat(userId, orgId, assistantId, {
+        messages: [{ role: 'user', content: 'hello' }],
+      });
+
+      expect(aiService.complete).toHaveBeenCalledWith(
+        userId,
+        orgId,
+        expect.objectContaining({
+          systemPrompt: baseAssistant.instructions,
+        }),
+      );
+    });
+
+    it('falls back to default appearance for null or array JSON values', async () => {
+      repository.findByIdWithKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        appearance: null,
+        knowledgeSources: [],
+      } as never);
+
+      const withNull = await service.get(userId, orgId, assistantId);
+      expect(withNull.appearance).toEqual({
+        primaryColor: '#6366f1',
+        position: 'bottom-right',
+        showWelcomeBubble: true,
+      });
+
+      repository.findByIdWithKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        appearance: [] as never,
+        knowledgeSources: [],
+      } as never);
+
+      const withArray = await service.get(userId, orgId, assistantId);
+      expect(withArray.appearance.primaryColor).toBe('#6366f1');
+    });
   });
 });
 

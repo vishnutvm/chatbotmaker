@@ -140,6 +140,22 @@ describe('env helpers', () => {
     expect(getWebAppOrigin()).toBe('https://app.example');
   });
 
+  it('falls back to APP_WEB_URL then CORS origin for web app origin', () => {
+    delete process.env.WEB_APP_URL;
+    process.env.APP_WEB_URL = 'https://from-app-web/';
+    expect(getWebAppOrigin()).toBe('https://from-app-web');
+
+    delete process.env.APP_WEB_URL;
+    process.env.CORS_ORIGINS = 'https://cors-only.example';
+    expect(getWebAppOrigin()).toBe('https://cors-only.example');
+  });
+
+  it('redacts postgres URLs without username and uses default port', () => {
+    expect(redactPostgresUrl('postgresql://db.example.com/mydb')).toBe(
+      'postgresql://db.example.com:5432/mydb',
+    );
+  });
+
   it('buildStartupEnvSnapshot reports hs256 for localhost supabase and empty secret as unset', () => {
     process.env.SUPABASE_URL = 'http://127.0.0.1:54321';
     process.env.SUPABASE_JWT_SECRET = '';

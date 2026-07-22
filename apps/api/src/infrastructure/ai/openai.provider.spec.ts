@@ -151,6 +151,43 @@ describe('OpenAiProvider', () => {
     });
   });
 
+  it('chat maps partial usage token fields to null', async () => {
+    process.env.OPENAI_API_KEY = 'sk-test';
+    mockChatCreate.mockResolvedValue({
+      id: 'chatcmpl_partial',
+      model: 'gpt-4o-mini',
+      choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+      usage: {},
+    });
+
+    const provider = new OpenAiProvider();
+    const result = await provider.chat({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: 'Hi' }],
+      maxTokens: 8,
+    });
+
+    expect(result.usage).toEqual({
+      promptTokens: null,
+      completionTokens: null,
+      totalTokens: null,
+    });
+  });
+
+  it('maps non-Error provider failures to AI_PROVIDER_ERROR', async () => {
+    process.env.OPENAI_API_KEY = 'sk-test';
+    mockChatCreate.mockRejectedValue('string failure');
+
+    const provider = new OpenAiProvider();
+    await expect(
+      provider.chat({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'Hi' }],
+        maxTokens: 8,
+      }),
+    ).rejects.toBeInstanceOf(BadGatewayException);
+  });
+
   it('chat maps upstream failures to AI_PROVIDER_ERROR', async () => {
     process.env.OPENAI_API_KEY = 'sk-test';
     mockChatCreate.mockRejectedValue(new Error('upstream down'));

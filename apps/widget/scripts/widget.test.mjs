@@ -1,5 +1,5 @@
 /**
- * Layer A tests for the minified IIFE bundle (bubble + panel UI).
+ * Layer A/B tests for the minified IIFE bundle (bubble + panel UI).
  * Run after `pnpm build` — invoked by package.json `test` script.
  */
 import assert from 'node:assert/strict';
@@ -14,23 +14,47 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bundlePath = path.join(root, 'dist', 'widget.js');
 
 /**
+ * @param {{ dark?: boolean, legacyMedia?: boolean }} [mediaOpts]
  * @returns {{
  *   api: { init: Function, destroy: Function, open: Function, close: Function, version: string },
  *   document: Document,
  *   window: Window & typeof globalThis,
+ *   mediaListeners: Array<() => void>,
  * }}
  */
-function loadWidgetWithDom() {
+function loadWidgetWithDom(mediaOpts = {}) {
   const { window, document } = parseHTML('<!doctype html><html><body></body></html>');
-  // linkedom matchMedia stub for theme=auto
-  window.matchMedia = (query) => ({
-    matches: String(query).includes('dark') ? false : false,
-    media: String(query),
-    addEventListener() {},
-    removeEventListener() {},
-    addListener() {},
-    removeListener() {},
-  });
+  /** @type {Array<() => void>} */
+  const mediaListeners = [];
+  const dark = Boolean(mediaOpts.dark);
+  const legacyMedia = Boolean(mediaOpts.legacyMedia);
+
+  window.matchMedia = (query) => {
+    const mql = {
+      matches: String(query).includes('dark') ? dark : false,
+      media: String(query),
+      addEventListener(_type, listener) {
+        mediaListeners.push(listener);
+      },
+      removeEventListener(_type, listener) {
+        const idx = mediaListeners.indexOf(listener);
+        if (idx >= 0) mediaListeners.splice(idx, 1);
+      },
+      addListener(listener) {
+        mediaListeners.push(listener);
+      },
+      removeListener(listener) {
+        const idx = mediaListeners.indexOf(listener);
+        if (idx >= 0) mediaListeners.splice(idx, 1);
+      },
+    };
+    if (legacyMedia) {
+      // Older Safari: only addListener/removeListener exist.
+      delete mql.addEventListener;
+      delete mql.removeEventListener;
+    }
+    return mql;
+  };
 
   const code = fs.readFileSync(bundlePath, 'utf8');
   const sandbox = {
@@ -40,14 +64,13 @@ function loadWidgetWithDom() {
     setTimeout: globalThis.setTimeout,
     clearTimeout: globalThis.clearTimeout,
   };
-  // IIFE may assign to `this` / global — mirror window as globalThis-like
   Object.defineProperty(sandbox, 'globalThis', { value: sandbox });
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox);
   const api = /** @type {{ init: Function, destroy: Function, open: Function, close: Function, version: string }} */ (
     sandbox.GenieWidget
   );
-  return { api, document, window };
+  return { api, document, window, mediaListeners };
 }
 
 describe('widget.js IIFE bundle', () => {
@@ -105,10 +128,26 @@ describe('widget.js IIFE bundle', () => {
       /theme must be/,
     );
   });
+
+  it('rejects non-string title', () => {
+    const { api } = loadWidgetWithDom();
+    assert.throws(
+      () => api.init({ apiKey: 'k', assistantId: 'a', title: 42 }),
+      /title must be a string/,
+    );
+  });
+
+  it('open/close/destroy are no-ops before init', () => {
+    const { api, document } = loadWidgetWithDom();
+    assert.doesNotThrow(() => api.open());
+    assert.doesNotThrow(() => api.close());
+    assert.doesNotThrow(() => api.destroy());
+    assert.equal(document.getElementById('genie-widget-root'), null);
+  });
 });
 
 describe('widget bubble + panel UI', () => {
-  /** @type {{ api: any, document: Document }} */
+  /** @type {{ api: any, document: Document, window: any, mediaListeners: Array<() => void> }} */
   let ctx;
 
   beforeEach(() => {
@@ -163,6 +202,66 @@ describe('widget bubble + panel UI', () => {
     assert.equal(panel.hasAttribute('hidden'), false);
   });
 
+  it('closes via header button and Escape key', () => {
+    const { api, document } = ctx;
+    api.init({ apiKey: 'key_smoke', assistantId: 'asst_smoke' });
+    api.open();
+
+    const host = document.getElementById('genie-widget-root');
+    const shadow = host.shadowRoot;
+    const panel = shadow.getElementById('gw-panel');
+    const closeBtn = shadow.querySelector('.gw-close');
+
+    closeBtn.click();
+    assert.equal(panel.hasAttribute('hidden'), true);
+
+    api.open();
+    const escape = new document.defaultView.Event('keydown', { bubbles: true });
+    Object.defineProperty(escape, 'key', { value: 'Escape' });
+    host.dispatchEvent(escape);
+    assert.equal(panel.hasAttribute('hidden'), true);
+  });
+
+  it('ignores empty composer submits', () => {
+    const { api, document } = ctx;
+    api.init({ apiKey: 'key_smoke', assistantId: 'asst_smoke' });
+    api.open();
+
+    const shadow = document.getElementById('genie-widget-root').shadowRoot;
+    const form = shadow.getElementById('gw-form');
+    const input = shadow.getElementById('gw-input');
+
+    input.value = '   ';
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    assert.equal(shadow.querySelectorAll('.gw-msg').length, 0);
+    assert.ok(shadow.getElementById('gw-empty'));
+  });
+
+  it('sets title via textContent (no HTML injection)', () => {
+    const { api, document } = ctx;
+    api.init({
+      apiKey: 'key_smoke',
+      assistantId: 'asst_smoke',
+      title: '<img src=x onerror=alert(1)>',
+    });
+
+    const title = document.getElementById('genie-widget-root').shadowRoot.getElementById('gw-title');
+    assert.equal(title.textContent, '<img src=x onerror=alert(1)>');
+    assert.equal(title.querySelectorAll('img').length, 0);
+  });
+
+  it('defaults blank title to Chat and resolves theme=auto to light', () => {
+    const { api, document } = ctx;
+    api.init({ apiKey: 'key_smoke', assistantId: 'asst_smoke', theme: 'auto', title: '   ' });
+
+    const shadow = document.getElementById('genie-widget-root').shadowRoot;
+    assert.equal(shadow.getElementById('gw-title').textContent, 'Chat');
+    assert.equal(shadow.querySelector('.gw-root').dataset.theme, 'light');
+  });
+
   it('appends user message and placeholder assistant reply on send', async () => {
     const { api, document } = ctx;
     api.init({ apiKey: 'key_smoke', assistantId: 'asst_smoke' });
@@ -173,7 +272,9 @@ describe('widget bubble + panel UI', () => {
     const form = shadow.getElementById('gw-form');
 
     input.value = 'Hello Genie';
-    form.dispatchEvent(new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }));
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
 
     const userMsgs = shadow.querySelectorAll('.gw-msg[data-role="user"]');
     assert.equal(userMsgs.length, 1);
@@ -196,5 +297,35 @@ describe('widget bubble + panel UI', () => {
 
     api.destroy();
     assert.equal(document.getElementById('genie-widget-root'), null);
+  });
+});
+
+describe('widget theme=auto media listeners', () => {
+  it('follows prefers-color-scheme dark and cleans up on destroy', () => {
+    const { api, document, mediaListeners } = loadWidgetWithDom({ dark: true });
+    api.init({ apiKey: 'k', assistantId: 'a', theme: 'auto' });
+
+    const root = document.getElementById('genie-widget-root').shadowRoot.querySelector('.gw-root');
+    assert.equal(root.dataset.theme, 'dark');
+    assert.ok(mediaListeners.length >= 1);
+
+    mediaListeners.forEach((fn) => {
+      fn();
+    });
+
+    api.destroy();
+    assert.equal(mediaListeners.length, 0);
+  });
+
+  it('uses legacy addListener/removeListener when addEventListener is absent', () => {
+    const { api, document, mediaListeners } = loadWidgetWithDom({ dark: false, legacyMedia: true });
+    api.init({ apiKey: 'k', assistantId: 'a', theme: 'auto' });
+
+    const root = document.getElementById('genie-widget-root').shadowRoot.querySelector('.gw-root');
+    assert.equal(root.dataset.theme, 'light');
+    assert.ok(mediaListeners.length >= 1);
+
+    api.destroy();
+    assert.equal(mediaListeners.length, 0);
   });
 });
