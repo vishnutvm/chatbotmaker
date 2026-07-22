@@ -1,6 +1,6 @@
 # Test coverage policy (Layer B)
 
-**Last updated:** 2026-07-22 (Campaign 3)
+**Last updated:** 2026-07-22 (Campaign 5)
 
 ## Goal
 
@@ -28,7 +28,7 @@ Included via `collectCoverageFrom` in `apps/api/jest.config.js`:
 
 | App | Unit coverage |
 |-----|----------------|
-| `@genie/web` | No unit runner yet (Next.js). Layer B tracks Playwright E2E under `apps/e2e`. Vitest for pure utils is a follow-up. |
+| `@genie/web` | Node test runner for pure utils (`embed-snippet.ts`, `widget-config.ts`). React dashboard components tracked via Playwright E2E. Vitest + RTL for `deploy-method-picker` / `embed-snippet-panel` is a follow-up. |
 | `@genie/widget` | Node test runner + linkedom against built IIFE (`pnpm --filter @genie/widget test`). Campaign 3 expanded bubble/panel Shadow DOM paths (open/close, Escape, empty submit, theme=auto, XSS title). |
 
 ## Commands
@@ -39,6 +39,12 @@ pnpm --filter @genie/api test -- --coverage
 
 # Widget unit / DOM (builds IIFE first)
 pnpm --filter @genie/widget test
+
+# API client publishable-keys client (mock fetch)
+pnpm --filter @genie/api-client test
+
+# Web embed utils
+pnpm --filter @genie/web test
 
 # API integration/e2e (Nest)
 pnpm --filter @genie/api test:integration
@@ -51,17 +57,19 @@ pnpm test:e2e
 
 Current gate: statements/lines/functions **95%**, branches **80%**.
 
-| Campaign | Date | Lines | Branches | Suites / tests |
-|----------|------|-------|----------|----------------|
-| Campaign 1 | 2026-07-21 | ~65% | ~53% | 21 / 103 |
-| Campaign 2 | 2026-07-22 | ~**98.41%** | ~**82.7%** | 24 / 191 |
-| Campaign 3 | 2026-07-22 | ~**99.88%** | ~**87.87%** | 24 / **216** |
+| Campaign | Date | Lines | Stmts | Funcs | Branches | API unit | Web embed | API client |
+|----------|------|-------|-------|-------|----------|----------|-----------|------------|
+| Campaign 1 | 2026-07-21 | ~65% | — | — | ~53% | 103 | — | — |
+| Campaign 2 | 2026-07-22 | ~98.41% | — | — | ~82.7% | 191 | — | — |
+| Campaign 3 | 2026-07-22 | ~99.88% | — | — | ~87.87% | 216 | — | — |
+| Campaign 4 | 2026-07-22 | 99.79% | 98.97% | 99.54% | 87.43% | 257 | 6 | — |
+| **Campaign 5** | 2026-07-22 | **99.89%** | **99.06%** | **99.54%** | **87.26%** | **258** | **17** | **6** |
 
 Target: **100%** on the included set. **Not met** — see hard blocks below.
 
 ## Hard exclusions / blocked
 
 - Nest DI wiring, controllers, guards, DTO shells, Prisma client wrapper, unused storage (per table above)
-- `@genie/web` unit coverage deferred until Vitest (or similar) is added
-- **`assistants.service` line ~475** (`octets.some(n > 255 \|\| NaN)`): unreachable under Node’s `URL` parser, which rejects invalid IPv4 literals before the SSRF ipv4 branch runs. Fail-closed via `new URL` catch instead. Documented; do not rewrite production code solely for that line.
-- Remaining **branch** gaps (~12%) are mostly `||` / `??` / optional-chaining arms and constructor `Logger` lines — low product risk.
+- **`deploy-method-picker.tsx`**, **`embed-snippet-panel.tsx`** — React client components; require Vitest + React Testing Library (or expanded authenticated Playwright flows). Route guards + publishable-keys API covered by E2E.
+- **`assistants.service` line ~497** (`octets.some(n > 255 || NaN)`): unreachable under Node’s `URL` parser, which rejects invalid IPv4 literals before the SSRF ipv4 branch runs. Fail-closed via `new URL` catch instead. Documented; do not rewrite production code solely for that line.
+- Remaining **branch** gaps (~13%) are mostly `||` / `??` / optional-chaining arms and constructor `Logger` lines — low product risk.

@@ -6,13 +6,15 @@
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "echo \"No lint configured for @genie/api-client\""
+    "lint": "echo \"No lint configured for @genie/api-client\"",
+    "test": "node --import tsx src/publishable-keys.test.mjs"
   },
   "dependencies": {
     "@genie/types": "workspace:*"
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
+    "tsx": "^4.19.4",
     "typescript": "^5.7.2"
   }
 }

@@ -61,4 +61,14 @@ describe('PublishableKeyHasher', () => {
     expect(hasher.hashesEqual(hex, 'not-hex')).toBe(false);
     expect(hasher.hashesEqual('abc', 'abcd')).toBe(false);
   });
+
+  it('returns false when timingSafeEqual throws', () => {
+    const crypto = require('crypto') as typeof import('crypto');
+    const spy = jest.spyOn(crypto, 'timingSafeEqual').mockImplementation(() => {
+      throw new Error('compare failed');
+    });
+    const hasher = new PublishableKeyHasher();
+    expect(hasher.hashesEqual('aa', 'aa')).toBe(false);
+    spy.mockRestore();
+  });
 });
