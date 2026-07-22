@@ -1,6 +1,6 @@
 # Deployment Architecture
 
-**Last Updated:** 2026-07-16
+**Last Updated:** 2026-07-22
 
 ---
 
@@ -34,6 +34,7 @@ apps/web
 |---------|------|---------|
 | Web | Vercel project `chatbotmaker` | Push to `main` (Production Branch = `main`) |
 | API | Railway project `genie-api` | Push to `main` (GitHub source = `vishnutvm/chatbotmaker`) |
+| Widget CDN | Cloudflare R2 (`cdn.<domain>/widget.js`) | `scripts/deploy-widget-cdn.sh` + GHA artifact; R2 when `ENABLE_WIDGET_CDN_DEPLOY` |
 
 There is **no** deploy-mirror repo. Do not reintroduce `mirror-deploy-repo.yml`.
 
@@ -41,13 +42,15 @@ There is **no** deploy-mirror repo. Do not reintroduce `mirror-deploy-repo.yml`.
 push to `main` (vishnutvm/chatbotmaker)
   ├─ CI (.github/workflows/ci.yml)
   ├─ Frontend → Vercel Git auto-deploy → https://chatbotmaker-dev.vercel.app
-  └─ Backend  → Railway Git auto-deploy → https://genie-api-production-4bb3.up.railway.app
+  ├─ Backend  → Railway Git auto-deploy → https://genie-api-production-4bb3.up.railway.app
+  └─ Widget   → Deploy Widget CDN workflow → artifact (+ R2 when secrets set)
 ```
 
 Optional GitHub Actions CLI deploys (disabled unless vars are set):
 
 - `Deploy API` — `ENABLE_RAILWAY_GHA_DEPLOY=true` + `RAILWAY_TOKEN`
 - `Deploy Web` — `ENABLE_VERCEL_GHA_DEPLOY=true` + `VERCEL_TOKEN`
+- `Deploy Widget CDN` — always builds artifact; R2 when `ENABLE_WIDGET_CDN_DEPLOY=true` + Cloudflare secrets
 
 ---
 
@@ -65,6 +68,15 @@ See `docs/deployment/VERCEL_WEB.md`.
 - `NEXT_PUBLIC_API_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_WIDGET_SCRIPT_URL` — Cloudflare CDN URL for embed snippets (`https://cdn.<domain>/widget.js`; see `docs/deployment/WIDGET_CDN.md`)
+
+### Cloudflare R2 — Widget CDN
+
+| Artifact | Path | Public URL pattern |
+|----------|------|--------------------|
+| `widget.js` | `apps/widget/dist/widget.js` | `https://cdn.<your-domain>/widget.js` |
+
+See `docs/deployment/WIDGET_CDN.md` and ADR `docs/adr/0005-widget-cdn-cloudflare-r2.md`.
 
 ### Railway — API
 

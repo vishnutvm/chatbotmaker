@@ -1,6 +1,6 @@
 # Infrastructure Architecture
 
-**Last Updated:** 2026-07-07  
+**Last Updated:** 2026-07-22  
 **Canonical MVP Stack**
 
 ---
@@ -41,11 +41,11 @@ These remain documented as **future scale options** only.
 ```text
 Cloudflare
     |
-    +----------------------+
-    |                      |
-    v                      v
-Marketing (Vercel)    Dashboard (Vercel)
-    |                      |
+    +----------------------+----------------------+
+    |                      |                      |
+    v                      v                      v
+Marketing (Vercel)    Dashboard (Vercel)    Widget CDN (R2)
+    |                      |               cdn.<domain>/widget.js
     +----------+-----------+
                |
                v
@@ -91,7 +91,8 @@ Marketing (Vercel)    Dashboard (Vercel)
 ### Cloudflare
 
 - DNS for custom domains
-- CDN for static assets and widget
+- CDN for static assets and **widget.js** (R2 origin + custom domain `cdn.<domain>`)
+- Deploy: `scripts/deploy-widget-cdn.sh` — see `docs/deployment/WIDGET_CDN.md` and ADR 0005
 - WAF rules (production)
 
 ### OpenAI

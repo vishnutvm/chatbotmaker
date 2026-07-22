@@ -1,0 +1,11 @@
+# Cloudflare Wrangler config for widget.js R2 uploads.
+# Account ID comes from CLOUDFLARE_ACCOUNT_ID (do not commit secrets).
+# See docs/deployment/WIDGET_CDN.md and docs/adr/0005-widget-cdn-cloudflare-r2.md
+
+name = "genie-widget-cdn"
+compatibility_date = "2026-07-22"
+
+# Binding is informational for local Wrangler; uploads use CLOUDFLARE_R2_BUCKET.
+[[r2_buckets]]
+binding = "WIDGET_BUCKET"
+bucket_name = "genie-widget"

@@ -1,0 +1,106 @@
+# Build embeddable widget.js and publish to Cloudflare R2 (optional).
+#
+# Always: build + upload GitHub Actions artifact.
+# R2 publish when:
+#   vars.ENABLE_WIDGET_CDN_DEPLOY == 'true'
+#   secrets.CLOUDFLARE_API_TOKEN
+#   secrets.CLOUDFLARE_ACCOUNT_ID
+# Optional vars: CLOUDFLARE_R2_BUCKET, CLOUDFLARE_R2_OBJECT_KEY, WIDGET_CDN_PUBLIC_URL
+#
+# Docs: docs/deployment/WIDGET_CDN.md
+
+name: Deploy Widget CDN
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/widget/**'
+      - 'scripts/deploy-widget-cdn.sh'
+      - 'scripts/deploy-widget-cdn.ps1'
+      - '.github/workflows/deploy-widget-cdn.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-widget-cdn-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build widget
+        run: pnpm --filter @genie/widget build
+
+      - name: Test widget
+        run: pnpm --filter @genie/widget test
+
+      - name: Upload widget.js artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: genie-widget-js
+          path: apps/widget/dist/widget.js
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-r2:
+    runs-on: ubuntu-latest
+    needs: build-artifact
+    if: vars.ENABLE_WIDGET_CDN_DEPLOY == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Download widget.js artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: genie-widget-js
+          path: apps/widget/dist
+
+      - name: Check Cloudflare secrets
+        id: secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping R2 publish — CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to Cloudflare R2
+        if: steps.secrets.outputs.skip != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_BUCKET }}
+          CLOUDFLARE_R2_OBJECT_KEY: ${{ vars.CLOUDFLARE_R2_OBJECT_KEY }}
+          WIDGET_CDN_PUBLIC_URL: ${{ vars.WIDGET_CDN_PUBLIC_URL }}
+          SKIP_BUILD: '1'
+        run: bash ./scripts/deploy-widget-cdn.sh

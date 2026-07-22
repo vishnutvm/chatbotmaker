@@ -34,7 +34,9 @@ Set in Vercel → Project → Settings → Environment Variables:
 | `NEXT_PUBLIC_API_URL` | Yes | NestJS API URL (Cloud Run: `https://genie-api-dev-509947078893.asia-south1.run.app`) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon/public key |
-| `NEXT_PUBLIC_WIDGET_SCRIPT_URL` | No | Public `widget.js` URL for dashboard embed snippets (default placeholder until CDN) |
+| `NEXT_PUBLIC_WIDGET_SCRIPT_URL` | No* | Public `widget.js` URL for dashboard embed snippets |
+
+\*Optional until CDN is live (defaults to placeholder `https://cdn.example.com/widget.js`). **Production pattern:** `https://cdn.<your-domain>/widget.js` after Cloudflare R2 publish — see [WIDGET_CDN.md](./WIDGET_CDN.md).
 
 Copy from `apps/web/.env.example` for local development.
 
