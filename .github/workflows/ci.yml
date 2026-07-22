@@ -32,6 +32,7 @@ jobs:
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/genie_ci
       SUPABASE_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
       SUPABASE_URL: http://127.0.0.1:54321
+      PUBLISHABLE_KEY_PEPPER: ci-test-publishable-key-pepper-32chars
     steps:
       - uses: actions/checkout@v4
 
@@ -113,6 +114,7 @@ jobs:
             -e DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:5432/genie_ci \
             -e SUPABASE_URL=https://ci-placeholder.supabase.co \
             -e SUPABASE_JWT_SECRET=ci-test-jwt-secret-minimum-32-characters \
+            -e PUBLISHABLE_KEY_PEPPER=ci-test-publishable-key-pepper-32chars \
             genie-api:ci
           for i in $(seq 1 45); do
             if curl -sf http://localhost:4000/health > /dev/null; then
@@ -149,6 +151,7 @@ jobs:
       SUPABASE_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
       E2E_JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
       SUPABASE_URL: http://127.0.0.1:54321
+      PUBLISHABLE_KEY_PEPPER: ci-test-publishable-key-pepper-32chars
       # Hosted URL → JWKS for real auth-flow tokens; dual-mode also accepts HS256 signTestJwt.
       # Empty secret → Playwright falls back to localhost HS256 only.
       E2E_API_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}

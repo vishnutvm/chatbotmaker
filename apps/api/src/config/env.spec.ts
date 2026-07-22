@@ -44,6 +44,7 @@ describe('validateSupabaseUrlForProduction', () => {
 describe('validateProductionEnv', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalSupabaseUrl = process.env.SUPABASE_URL;
+  const originalPepper = process.env.PUBLISHABLE_KEY_PEPPER;
 
   afterEach(() => {
     if (originalNodeEnv === undefined) {
@@ -55,6 +56,11 @@ describe('validateProductionEnv', () => {
       delete process.env.SUPABASE_URL;
     } else {
       process.env.SUPABASE_URL = originalSupabaseUrl;
+    }
+    if (originalPepper === undefined) {
+      delete process.env.PUBLISHABLE_KEY_PEPPER;
+    } else {
+      process.env.PUBLISHABLE_KEY_PEPPER = originalPepper;
     }
   });
 
@@ -68,13 +74,31 @@ describe('validateProductionEnv', () => {
   it('throws in production when SUPABASE_URL is missing', () => {
     process.env.NODE_ENV = 'production';
     delete process.env.SUPABASE_URL;
+    process.env.PUBLISHABLE_KEY_PEPPER = 'test-pepper-at-least-32-characters!!';
 
     expect(() => validateProductionEnv()).toThrow(/SUPABASE_URL is required/);
+  });
+
+  it('throws in production when PUBLISHABLE_KEY_PEPPER is missing', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.SUPABASE_URL = 'https://rocxcjxaqceqndkymujl.supabase.co';
+    delete process.env.PUBLISHABLE_KEY_PEPPER;
+
+    expect(() => validateProductionEnv()).toThrow(/PUBLISHABLE_KEY_PEPPER/);
+  });
+
+  it('throws in production when PUBLISHABLE_KEY_PEPPER is too short', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.SUPABASE_URL = 'https://rocxcjxaqceqndkymujl.supabase.co';
+    process.env.PUBLISHABLE_KEY_PEPPER = 'short';
+
+    expect(() => validateProductionEnv()).toThrow(/at least 32/);
   });
 
   it('passes in production with valid hosted Supabase URL', () => {
     process.env.NODE_ENV = 'production';
     process.env.SUPABASE_URL = 'https://rocxcjxaqceqndkymujl.supabase.co';
+    process.env.PUBLISHABLE_KEY_PEPPER = 'test-pepper-at-least-32-characters!!';
 
     expect(() => validateProductionEnv()).not.toThrow();
   });

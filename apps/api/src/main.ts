@@ -1,13 +1,16 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Request } from 'express';
 import { AppModule } from './app.module';
+import { isPublicApiPath } from './config/cors-public-path';
 import { getCorsOrigins, logStartupEnv, validateProductionEnv } from './config/env';
 
 async function bootstrap() {
   validateProductionEnv();
   logStartupEnv();
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableShutdownHooks();
 
   app.setGlobalPrefix('api/v1', { exclude: ['health', 'version'] });
@@ -19,9 +22,22 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors({
-    origin: getCorsOrigins(),
-    credentials: true,
+  const dashboardOrigins = getCorsOrigins();
+  app.enableCors((req: Request, callback) => {
+    if (isPublicApiPath(req)) {
+      // Third-party embeds: reflect origin, no credentials.
+      callback(null, {
+        origin: true,
+        credentials: false,
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Genie-Public-Key'],
+        methods: ['GET', 'OPTIONS'],
+      });
+      return;
+    }
+    callback(null, {
+      origin: dashboardOrigins,
+      credentials: true,
+    });
   });
 
   const port = process.env.PORT ? Number(process.env.PORT) : 4000;

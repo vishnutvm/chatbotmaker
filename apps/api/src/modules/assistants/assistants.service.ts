@@ -12,6 +12,7 @@ import type {
   KnowledgeSourceDto,
   KnowledgeSourcesResponse,
   OrganizationRole,
+  WidgetBootstrapDto,
 } from '@genie/types';
 import { AiService } from '../ai/ai.service';
 import { OrganizationsService } from '../organizations/organizations.service';
@@ -58,6 +59,27 @@ export class AssistantsService {
     await this.organizationsService.requireMembership(userId, organizationId);
     const assistants = await this.assistantsRepository.findManyByOrganization(organizationId);
     return { assistants: assistants.map((a) => this.toDto(a)) };
+  }
+
+  /**
+   * Public widget bootstrap — live assistants only, same-org, display fields only.
+   * Returns null for missing / wrong-org / non-live (caller maps to 404).
+   */
+  async getLivePublicDisplay(
+    organizationId: string,
+    assistantId: string,
+  ): Promise<WidgetBootstrapDto | null> {
+    const assistant = await this.assistantsRepository.findById(organizationId, assistantId);
+    if (!assistant || assistant.status !== 'live') {
+      return null;
+    }
+    return {
+      assistantId: assistant.id,
+      organizationId: assistant.organizationId,
+      name: assistant.name,
+      welcomeMessage: assistant.welcomeMessage,
+      appearance: this.toAppearance(assistant.appearance) as unknown as Record<string, unknown>,
+    };
   }
 
   async create(

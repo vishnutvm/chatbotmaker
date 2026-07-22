@@ -5,10 +5,15 @@ const HOST_ID = 'genie-widget-root';
 
 const CHAT_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>`;
 
+export type AuthUiState = 'loading' | 'ready' | 'error';
+
 export interface MountOptions {
   theme: GenieWidgetTheme;
   title: string;
   assistantId: string;
+  /** Initial auth UI state (default loading until bootstrap completes). */
+  authState?: AuthUiState;
+  authMessage?: string;
 }
 
 export interface WidgetMount {
@@ -17,6 +22,9 @@ export interface WidgetMount {
   destroy: () => void;
   isOpen: () => boolean;
   getHost: () => HTMLElement;
+  setAuthState: (state: AuthUiState, message?: string) => void;
+  setTitle: (title: string) => void;
+  showWelcome: (text: string) => void;
 }
 
 function resolveTheme(theme: GenieWidgetTheme): 'light' | 'dark' {
@@ -34,6 +42,7 @@ const PANEL_SHELL = `
       <h2 id="gw-title"></h2>
       <button type="button" class="gw-close" aria-label="Close chat">×</button>
     </div>
+    <div class="gw-status" id="gw-status" role="status" aria-live="polite" hidden></div>
     <div class="gw-messages" id="gw-messages" role="log" aria-live="polite" aria-relevant="additions">
       <p class="gw-empty" id="gw-empty">Ask a question to get started.</p>
     </div>
@@ -84,10 +93,13 @@ export function mountWidget(options: MountOptions): WidgetMount {
   const input = shadow.getElementById('gw-input') as HTMLInputElement;
   const messages = shadow.getElementById('gw-messages') as HTMLElement;
   const empty = shadow.getElementById('gw-empty') as HTMLElement | null;
+  const statusEl = shadow.getElementById('gw-status') as HTMLElement;
   const titleEl = shadow.getElementById('gw-title') as HTMLElement;
   titleEl.textContent = options.title;
 
   let openState = false;
+  let authState: AuthUiState = options.authState ?? 'loading';
+  let replyTimer: ReturnType<typeof setTimeout> | null = null;
   let mediaQuery: MediaQueryList | null = null;
   let onMediaChange: (() => void) | null = null;
 
@@ -103,6 +115,28 @@ export function mountWidget(options: MountOptions): WidgetMount {
     }
   }
 
+  function applyAuthUi(state: AuthUiState, message?: string): void {
+    authState = state;
+    root.dataset.auth = state;
+    const sendBtn = form.querySelector('.gw-send') as HTMLButtonElement;
+    if (state === 'ready') {
+      statusEl.hidden = true;
+      statusEl.textContent = '';
+      input.disabled = false;
+      sendBtn.disabled = false;
+      return;
+    }
+    statusEl.hidden = false;
+    statusEl.dataset.kind = state;
+    statusEl.textContent =
+      message ??
+      (state === 'loading' ? 'Connecting…' : 'Unable to connect. Check your public key.');
+    input.disabled = true;
+    sendBtn.disabled = true;
+  }
+
+  applyAuthUi(authState, options.authMessage);
+
   function setOpen(next: boolean): void {
     openState = next;
     if (next) {
@@ -113,7 +147,9 @@ export function mountWidget(options: MountOptions): WidgetMount {
     bubble.setAttribute('aria-expanded', next ? 'true' : 'false');
     bubble.setAttribute('aria-label', next ? 'Close chat' : 'Open chat');
     if (next) {
-      input.focus();
+      if (authState === 'ready') {
+        input.focus();
+      }
     } else {
       bubble.focus();
     }
@@ -146,12 +182,14 @@ export function mountWidget(options: MountOptions): WidgetMount {
 
   function onSubmit(event: Event): void {
     event.preventDefault();
+    if (authState !== 'ready') return;
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
     appendMessage('user', text);
-    // Placeholder reply — live API / pk_live deferred to later P7 tasks.
-    window.setTimeout(() => {
+    // Placeholder reply — live SSE deferred to later P7 tasks.
+    replyTimer = setTimeout(() => {
+      replyTimer = null;
       appendMessage(
         'assistant',
         'Thanks — chat UI is ready. Live assistant replies connect in a later Phase 7 task.',
@@ -172,7 +210,19 @@ export function mountWidget(options: MountOptions): WidgetMount {
     close: () => setOpen(false),
     isOpen: () => openState,
     getHost: () => host,
+    setAuthState: (state, message) => applyAuthUi(state, message),
+    setTitle: (title) => {
+      titleEl.textContent = title;
+    },
+    showWelcome: (text) => {
+      if (!text.trim()) return;
+      appendMessage('assistant', text);
+    },
     destroy: () => {
+      if (replyTimer !== null) {
+        clearTimeout(replyTimer);
+        replyTimer = null;
+      }
       bubble.removeEventListener('click', onBubbleClick);
       closeBtn.removeEventListener('click', onCloseClick);
       form.removeEventListener('submit', onSubmit);

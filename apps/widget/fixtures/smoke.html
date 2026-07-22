@@ -27,13 +27,16 @@
             throw new Error('GenieWidget global missing');
           }
           GenieWidget.init({
-            apiKey: 'key_fixture',
-            assistantId: 'asst_fixture',
+            apiKey: 'pk_live_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcd',
+            assistantId: '00000000-0000-4000-8000-000000000001',
             theme: 'auto',
             title: 'Genie smoke',
+            apiBaseUrl: 'http://127.0.0.1:4000',
           });
           el.textContent =
-            'OK — bubble+panel mounted (version ' + GenieWidget.version + ')';
+            'OK — bubble+panel mounted (version ' +
+            GenieWidget.version +
+            '). Bootstrap uses local API if running.';
         } catch (err) {
           el.textContent = 'FAIL — ' + (err && err.message ? err.message : String(err));
           el.style.color = 'crimson';
