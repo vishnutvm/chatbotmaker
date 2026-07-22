@@ -197,4 +197,15 @@ describe('widget bubble + panel UI', () => {
     api.destroy();
     assert.equal(document.getElementById('genie-widget-root'), null);
   });
+
+  it('renders title via textContent (no HTML injection)', () => {
+    const { api, document } = ctx;
+    const evil = '<img src=x onerror=alert(1)>';
+    api.init({ apiKey: 'k', assistantId: 'a', title: evil });
+
+    const title = document.getElementById('genie-widget-root').shadowRoot.getElementById('gw-title');
+    assert.equal(title.textContent, evil);
+    assert.equal(title.children.length, 0);
+    assert.equal(title.querySelector('img'), null);
+  });
 });

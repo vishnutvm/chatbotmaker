@@ -88,6 +88,7 @@ export function mountWidget(options: MountOptions): WidgetMount {
   titleEl.textContent = options.title;
 
   let openState = false;
+  let replyTimer: number | null = null;
   let mediaQuery: MediaQueryList | null = null;
   let onMediaChange: (() => void) | null = null;
 
@@ -151,7 +152,11 @@ export function mountWidget(options: MountOptions): WidgetMount {
     input.value = '';
     appendMessage('user', text);
     // Placeholder reply — live API / pk_live deferred to later P7 tasks.
-    window.setTimeout(() => {
+    if (replyTimer !== null) {
+      window.clearTimeout(replyTimer);
+    }
+    replyTimer = window.setTimeout(() => {
+      replyTimer = null;
       appendMessage(
         'assistant',
         'Thanks — chat UI is ready. Live assistant replies connect in a later Phase 7 task.',
@@ -173,6 +178,10 @@ export function mountWidget(options: MountOptions): WidgetMount {
     isOpen: () => openState,
     getHost: () => host,
     destroy: () => {
+      if (replyTimer !== null) {
+        window.clearTimeout(replyTimer);
+        replyTimer = null;
+      }
       bubble.removeEventListener('click', onBubbleClick);
       closeBtn.removeEventListener('click', onCloseClick);
       form.removeEventListener('submit', onSubmit);
