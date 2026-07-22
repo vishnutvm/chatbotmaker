@@ -1,5 +1,14 @@
 import {
   buildStartupEnvSnapshot,
+  getCorsOrigins,
+  getDatabaseUrl,
+  getDirectDatabaseUrl,
+  getOpenAiApiKey,
+  getRequiredEnv,
+  getSupabaseJwtSecret,
+  getSupabaseUrl,
+  getWebAppOrigin,
+  logStartupEnv,
   redactPostgresUrl,
   validateProductionEnv,
   validateSupabaseUrlForProduction,
@@ -86,6 +95,73 @@ describe('redactPostgresUrl', () => {
   it('returns not set for empty values', () => {
     expect(redactPostgresUrl(undefined)).toBe('(not set)');
     expect(redactPostgresUrl('')).toBe('(not set)');
+  });
+
+  it('returns invalid marker for malformed URLs', () => {
+    expect(redactPostgresUrl('not-a-url')).toBe('(invalid url)');
+  });
+});
+
+describe('env helpers', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it('getRequiredEnv throws when missing', () => {
+    delete process.env.MISSING_ENV_KEY;
+    expect(() => getRequiredEnv('MISSING_ENV_KEY')).toThrow(/Missing required environment variable/);
+  });
+
+  it('returns database and supabase defaults when unset', () => {
+    delete process.env.DATABASE_URL;
+    delete process.env.DIRECT_URL;
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_JWT_SECRET;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.CORS_ORIGINS;
+    delete process.env.WEB_APP_URL;
+    delete process.env.APP_WEB_URL;
+
+    expect(getDatabaseUrl()).toContain('127.0.0.1:5432');
+    expect(getDirectDatabaseUrl()).toBe(getDatabaseUrl());
+    expect(getSupabaseUrl()).toContain('127.0.0.1:54321');
+    expect(getSupabaseJwtSecret().length).toBeGreaterThan(20);
+    expect(getOpenAiApiKey()).toBeUndefined();
+    expect(getCorsOrigins()).toEqual(['http://localhost:3001', 'http://localhost:3000']);
+    expect(getWebAppOrigin()).toBe('http://localhost:3001');
+  });
+
+  it('prefers WEB_APP_URL and parses CORS origins', () => {
+    process.env.CORS_ORIGINS = ' https://a.example , ,https://b.example ';
+    process.env.WEB_APP_URL = 'https://app.example/';
+    expect(getCorsOrigins()).toEqual(['https://a.example', 'https://b.example']);
+    expect(getWebAppOrigin()).toBe('https://app.example');
+  });
+
+  it('buildStartupEnvSnapshot reports hs256 for localhost supabase and empty secret as unset', () => {
+    process.env.SUPABASE_URL = 'http://127.0.0.1:54321';
+    process.env.SUPABASE_JWT_SECRET = '';
+    delete process.env.OPENAI_API_KEY;
+
+    const snapshot = buildStartupEnvSnapshot();
+    expect(snapshot.jwtVerification).toBe('hs256-secret');
+    expect(snapshot.secrets.supabaseJwtSecret).toBe('unset');
+    expect(snapshot.secrets.openaiApiKey).toBe('unset');
+  });
+
+  it('treats https localhost Supabase as hs256-secret mode', () => {
+    process.env.SUPABASE_URL = 'https://localhost:54321';
+    expect(buildStartupEnvSnapshot().jwtVerification).toBe('hs256-secret');
+  });
+
+  it('logStartupEnv writes a redacted snapshot', () => {
+    const spy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    process.env.SUPABASE_URL = 'https://rocxcjxaqceqndkymujl.supabase.co';
+    logStartupEnv();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
 

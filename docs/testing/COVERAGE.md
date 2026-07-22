@@ -1,6 +1,6 @@
 # Test coverage policy (Layer B)
 
-**Last updated:** 2026-07-21
+**Last updated:** 2026-07-22
 
 ## Goal
 
@@ -43,6 +43,16 @@ pnpm test:e2e
 
 ## Thresholds
 
-Current gate (raise as coverage climbs): statements/lines **60%**, functions **55%**, branches **50%**.  
-Latest measured (2026-07-21): ~**65%** lines on included set (100 unit tests).  
-Target: **100%** on the included set.
+Current gate: statements/lines **90%**, functions **90%**, branches **75%**.
+
+| Campaign | Date | Lines | Suites / tests |
+|----------|------|-------|----------------|
+| Campaign 1 | 2026-07-21 | ~65% | 21 / 103 |
+| Campaign 2 | 2026-07-22 | ~**98%** | 24 / 191 |
+
+Target: **100%** on the included set. Remaining gaps are mostly defensive branches (SSRF octet edges, abort mid-stream, empty ingest, appearance JSON fallbacks) — see latest Jest uncovered line report.
+
+## Hard exclusions / blocked
+
+- Nest DI wiring, controllers, guards, DTO shells, Prisma client wrapper, unused storage (per table above)
+- `@genie/web` unit coverage deferred until Vitest (or similar) is added

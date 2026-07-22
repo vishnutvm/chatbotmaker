@@ -29,10 +29,10 @@ module.exports = {
   coverageThreshold: {
     global: {
       // Progressive Layer B gate — raise toward 100% as gaps close.
-      statements: 60,
-      branches: 50,
-      functions: 55,
-      lines: 60,
+      statements: 90,
+      branches: 75,
+      functions: 90,
+      lines: 90,
     },
   },
   testEnvironment: 'node',
