@@ -156,4 +156,96 @@ describe('PublishableKeysService', () => {
     const raw = hasher.generateRawKey();
     await expect(service.verifyRawKey(raw)).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('verifyRawKey rejects when stored hash does not match', async () => {
+    const raw = hasher.generateRawKey();
+    repository.findActiveByHash.mockResolvedValue({
+      id: 'key-1',
+      organizationId: 'org-1',
+      keyHash: 'deadbeef',
+      revokedAt: null,
+    });
+
+    await expect(service.verifyRawKey(raw)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('verifyRawKey rejects null and empty keys', async () => {
+    await expect(service.verifyRawKey(null)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.verifyRawKey('')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('revoke updates active key and returns dto', async () => {
+    const revokedAt = new Date('2026-02-01T00:00:00.000Z');
+    repository.findByIdInOrganization.mockResolvedValue({
+      id: 'key-1',
+      organizationId: 'org-1',
+      name: 'Default',
+      keyPrefix: 'pk_live_AbCd…wxyz',
+      keyHash: 'abc',
+      createdById: 'user-1',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      lastUsedAt: null,
+      revokedAt: null,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
+    repository.revoke.mockResolvedValue({
+      id: 'key-1',
+      organizationId: 'org-1',
+      name: 'Default',
+      keyPrefix: 'pk_live_AbCd…wxyz',
+      keyHash: 'abc',
+      createdById: 'user-1',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      lastUsedAt: null,
+      revokedAt,
+      updatedAt: revokedAt,
+    });
+
+    const result = await service.revoke('user-1', 'org-1', 'key-1');
+
+    expect(repository.revoke).toHaveBeenCalledWith('key-1');
+    expect(result.revokedAt).toBe(revokedAt.toISOString());
+  });
+
+  it('create uses trimmed custom name', async () => {
+    repository.create.mockImplementation(async (data: { name: string }) => ({
+      id: 'key-1',
+      organizationId: 'org-1',
+      name: data.name,
+      keyPrefix: 'pk_live_AbCd…wxyz',
+      keyHash: 'abc',
+      createdById: 'user-1',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      lastUsedAt: null,
+      revokedAt: null,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    }));
+
+    const created = await service.create('user-1', 'org-1', '  Widget Key  ');
+    expect(created.name).toBe('Widget Key');
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Widget Key' }),
+    );
+  });
+
+  it('markUsed touches lastUsed and swallows repository errors', async () => {
+    repository.touchLastUsed.mockResolvedValue(undefined);
+    await expect(service.markUsed('key-1')).resolves.toBeUndefined();
+    expect(repository.touchLastUsed).toHaveBeenCalledWith('key-1');
+
+    repository.touchLastUsed.mockRejectedValue(new Error('db down'));
+    await expect(service.markUsed('key-1')).resolves.toBeUndefined();
+  });
+
+  it('rejects member role for list and revoke', async () => {
+    organizationsService.requireMembership.mockResolvedValue({
+      membership: { role: 'member' },
+      organization: { id: 'org-1' },
+    });
+
+    await expect(service.list('user-2', 'org-1')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.revoke('user-2', 'org-1', 'key-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
 });

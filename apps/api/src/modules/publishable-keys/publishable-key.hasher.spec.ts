@@ -46,4 +46,19 @@ describe('PublishableKeyHasher', () => {
     expect(prefix.length).toBeLessThan(key.length);
     expect(prefix.startsWith('pk_live_')).toBe(true);
   });
+
+  it('uses fallback display prefix for unexpectedly short keys', () => {
+    const hasher = new PublishableKeyHasher();
+    expect(hasher.toDisplayPrefix('pk_live_short')).toBe('pk_live_…');
+  });
+
+  it('compares hashes in constant time', () => {
+    const hasher = new PublishableKeyHasher();
+    const hex = 'a'.repeat(64);
+    const other = 'b'.repeat(64);
+    expect(hasher.hashesEqual(hex, hex)).toBe(true);
+    expect(hasher.hashesEqual(hex, other)).toBe(false);
+    expect(hasher.hashesEqual(hex, 'not-hex')).toBe(false);
+    expect(hasher.hashesEqual('abc', 'abcd')).toBe(false);
+  });
 });

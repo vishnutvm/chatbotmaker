@@ -33,4 +33,12 @@ describe('PublishableKeyRateLimiter', () => {
     }
     expect(() => limiter.assertWithinLimits('key-b')).not.toThrow();
   });
+
+  it('reset clears all buckets', () => {
+    for (let i = 0; i < 60; i += 1) {
+      limiter.assertWithinLimits('key-1');
+    }
+    limiter.reset();
+    expect(() => limiter.assertWithinLimits('key-1')).not.toThrow();
+  });
 });
