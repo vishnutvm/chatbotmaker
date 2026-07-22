@@ -287,4 +287,104 @@ describe('AiService', () => {
 
     expect(aiProvider.chat).toHaveBeenCalledTimes(30);
   });
+
+  it('returns empty embeddings without calling provider for empty input', async () => {
+    const result = await service.embed(userId, orgId, []);
+    expect(result.embeddings).toEqual([]);
+    expect(aiProvider.embed).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a single embedding vector into a batch array', async () => {
+    aiProvider.embed.mockResolvedValue([0.1, 0.2] as never);
+
+    const result = await service.embed(userId, orgId, ['hello']);
+    expect(result.embeddings).toEqual([[0.1, 0.2]]);
+  });
+
+  it('records embed errors then rethrows', async () => {
+    aiProvider.embed.mockRejectedValue(
+      new BadGatewayException({
+        statusCode: 502,
+        code: 'AI_PROVIDER_ERROR',
+        message: 'Upstream model request failed',
+      }),
+    );
+
+    await expect(service.embed(userId, orgId, ['hello'])).rejects.toBeInstanceOf(
+      BadGatewayException,
+    );
+
+    await Promise.resolve();
+    expect(usageRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'embed',
+        status: 'error',
+        errorCode: 'AI_PROVIDER_ERROR',
+      }),
+    );
+  });
+
+  it('emits synthetic done when stream ends without a done chunk', async () => {
+    aiProvider.stream.mockImplementation(async function* () {
+      yield { type: 'delta' as const, content: 'only' };
+    });
+
+    const events = [];
+    for await (const event of service.stream(userId, orgId, {
+      messages: [{ role: 'user', content: 'Hi' }],
+    })) {
+      events.push(event);
+    }
+
+    expect(events.at(-1)).toEqual({
+      event: 'done',
+      data: {
+        finishReason: null,
+        usage: { promptTokens: null, completionTokens: null, totalTokens: null },
+      },
+    });
+  });
+
+  it('maps unexpected stream errors to AI_PROVIDER_ERROR SSE', async () => {
+    aiProvider.stream.mockImplementation(async function* () {
+      throw new Error('boom');
+    });
+
+    const events = [];
+    for await (const event of service.stream(userId, orgId, {
+      messages: [{ role: 'user', content: 'Hi' }],
+    })) {
+      events.push(event);
+    }
+
+    expect(events.at(-1)).toEqual({
+      event: 'error',
+      data: {
+        statusCode: 502,
+        code: 'AI_PROVIDER_ERROR',
+        message: 'Upstream model request failed',
+      },
+    });
+  });
+
+  it('stops streaming quietly when the signal aborts mid-stream', async () => {
+    const controller = new AbortController();
+    aiProvider.stream.mockImplementation(async function* () {
+      yield { type: 'delta' as const, content: 'A' };
+      controller.abort();
+      yield { type: 'delta' as const, content: 'B' };
+    });
+
+    const events = [];
+    for await (const event of service.stream(
+      userId,
+      orgId,
+      { messages: [{ role: 'user', content: 'Hi' }] },
+      controller.signal,
+    )) {
+      events.push(event);
+    }
+
+    expect(events.map((e) => e.event)).toEqual(['meta', 'delta']);
+  });
 });

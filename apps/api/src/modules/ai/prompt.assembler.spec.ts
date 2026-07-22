@@ -50,4 +50,12 @@ describe('PromptAssembler', () => {
       }),
     ).toThrow(/soft limit/);
   });
+
+  it('rejects invalid roles after trim', () => {
+    expect(() =>
+      assembler.assemble({
+        messages: [{ role: 'tool' as 'user', content: 'Hi' }],
+      }),
+    ).toThrow(/message role is invalid/);
+  });
 });

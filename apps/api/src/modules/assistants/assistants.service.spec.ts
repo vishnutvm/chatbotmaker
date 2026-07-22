@@ -466,4 +466,369 @@ describe('AssistantsService', () => {
       expect(aiService.complete).not.toHaveBeenCalled();
     });
   });
+
+  describe('update', () => {
+    it('updates fields and stamps deployedAt when going live for the first time', async () => {
+      organizationsService.requireMembership.mockResolvedValue({
+        organization: { id: orgId },
+        membership: { role: 'owner' },
+      });
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.update.mockResolvedValue({
+        ...baseAssistant,
+        name: 'Renamed',
+        status: 'live',
+        deployedAt: createdAt,
+        appearance: {
+          primaryColor: '#111111',
+          position: 'bottom-left',
+          showWelcomeBubble: false,
+        },
+      } as never);
+
+      const result = await service.update(userId, orgId, assistantId, {
+        name: ' Renamed ',
+        status: 'live',
+        appearance: { primaryColor: '#111111', position: 'bottom-left', showWelcomeBubble: false },
+      });
+
+      expect(repository.update).toHaveBeenCalledWith(
+        assistantId,
+        expect.objectContaining({
+          name: 'Renamed',
+          status: 'live',
+          deployedAt: expect.any(Date),
+        }),
+      );
+      expect(result.name).toBe('Renamed');
+      expect(result.deployed).toBe(true);
+    });
+
+    it('forbids members from changing status', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+
+      await expect(
+        service.update(userId, orgId, assistantId, { status: 'live' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('throws when assistant is missing', async () => {
+      organizationsService.requireMembership.mockResolvedValue({
+        organization: { id: orgId },
+        membership: { role: 'owner' },
+      });
+      repository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.update(userId, orgId, assistantId, { name: 'X' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('knowledge sub-resources', () => {
+    it('lists knowledge sources for an assistant', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.findKnowledgeByAssistant.mockResolvedValue([
+        {
+          id: 'ks-1',
+          organizationId: orgId,
+          assistantId,
+          type: 'text',
+          name: 'FAQ',
+          status: 'ready',
+          content: 'Hello world',
+          url: null,
+          createdAt,
+          updatedAt,
+        },
+      ] as never);
+
+      const result = await service.listKnowledge(userId, orgId, assistantId);
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0].contentPreview).toBe('Hello world');
+    });
+
+    it('removes a knowledge source that belongs to the assistant', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.findKnowledgeById.mockResolvedValue({
+        id: 'ks-1',
+        assistantId,
+      } as never);
+
+      await service.removeKnowledge(userId, orgId, assistantId, 'ks-1');
+      expect(repository.deleteKnowledgeSource).toHaveBeenCalledWith('ks-1');
+    });
+
+    it('rejects removing a knowledge source from another assistant', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.findKnowledgeById.mockResolvedValue({
+        id: 'ks-1',
+        assistantId: 'other-assistant',
+      } as never);
+
+      await expect(
+        service.removeKnowledge(userId, orgId, assistantId, 'ks-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('requires url for url knowledge sources', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+
+      await expect(
+        service.addKnowledge(userId, orgId, assistantId, {
+          type: 'url',
+          name: 'Docs',
+        } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('list + get + not-found paths', () => {
+    it('lists assistants for the organization', async () => {
+      repository.findManyByOrganization.mockResolvedValue([baseAssistant] as never);
+      const result = await service.list(userId, orgId);
+      expect(result.assistants).toHaveLength(1);
+      expect(result.assistants[0].id).toBe(assistantId);
+    });
+
+    it('gets an assistant with knowledge sources', async () => {
+      repository.findByIdWithKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        knowledgeSources: [
+          {
+            id: 'ks-1',
+            organizationId: orgId,
+            assistantId,
+            type: 'text',
+            name: 'FAQ',
+            status: 'ready',
+            content: 'Hello',
+            url: null,
+            createdAt,
+            updatedAt,
+          },
+        ],
+      } as never);
+
+      const result = await service.get(userId, orgId, assistantId);
+      expect(result.knowledgeSources).toHaveLength(1);
+      expect(result.knowledgeSourceCount).toBe(1);
+    });
+
+    it('throws when deleting a missing assistant', async () => {
+      organizationsService.requireMembership.mockResolvedValue({
+        organization: { id: orgId },
+        membership: { role: 'owner' },
+      });
+      repository.findById.mockResolvedValue(null);
+      await expect(service.delete(userId, orgId, assistantId)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('throws when deploying a missing assistant', async () => {
+      organizationsService.requireMembership.mockResolvedValue({
+        organization: { id: orgId },
+        membership: { role: 'owner' },
+      });
+      repository.findById.mockResolvedValue(null);
+      await expect(service.deploy(userId, orgId, assistantId)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('throws when adding knowledge to a missing assistant', async () => {
+      repository.findById.mockResolvedValue(null);
+      await expect(
+        service.addKnowledge(userId, orgId, assistantId, {
+          type: 'text',
+          name: 'FAQ',
+          content: 'Hello',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('URL knowledge safety edges', () => {
+    it('rejects redirects, non-OK responses, oversized content-length, and empty text', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockResolvedValue({
+        id: 'ks-url',
+        organizationId: orgId,
+        assistantId,
+        type: 'url',
+        name: 'Docs',
+        status: 'failed',
+        content: '',
+        url: 'https://example.com/docs',
+        createdAt,
+        updatedAt,
+      } as never);
+
+      const fetchMock = jest.spyOn(global, 'fetch' as never) as jest.SpyInstance;
+
+      fetchMock.mockResolvedValueOnce({
+        status: 302,
+        ok: false,
+        headers: { get: () => null },
+      });
+      await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Docs',
+        url: 'https://example.com/docs',
+      });
+
+      fetchMock.mockResolvedValueOnce({
+        status: 500,
+        ok: false,
+        headers: { get: () => null },
+      });
+      await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Docs',
+        url: 'https://example.com/docs',
+      });
+
+      fetchMock.mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: { get: () => String(MAX_OVERSIZE) },
+        text: async () => 'ignored',
+      });
+      await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Docs',
+        url: 'https://example.com/docs',
+      });
+
+      fetchMock.mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        text: async () => '<html><body>   </body></html>',
+      });
+      await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Docs',
+        url: 'https://example.com/docs',
+      });
+
+      expect(repository.createKnowledgeSource).toHaveBeenCalled();
+      fetchMock.mockRestore();
+    });
+
+    it('rejects private IPv4, IPv6, and non-http schemes', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockResolvedValue({
+        id: 'ks-bad',
+        organizationId: orgId,
+        assistantId,
+        type: 'url',
+        name: 'Bad',
+        status: 'failed',
+        content: '',
+        url: 'http://10.0.0.1/',
+        createdAt,
+        updatedAt,
+      } as never);
+
+      const fetchMock = jest.spyOn(globalThis, 'fetch').mockImplementation(() => {
+        throw new Error('fetch should not be called');
+      });
+
+      for (const url of [
+        'ftp://example.com/x',
+        'http://10.0.0.1/x',
+        'http://192.168.1.1/x',
+        'http://172.16.5.5/x',
+        'http://169.254.1.1/x',
+        'http://100.64.1.1/x',
+        'http://[fc00::1]/',
+        'http://[fe80::1]/',
+        'not a url',
+      ]) {
+        await service.addKnowledge(userId, orgId, assistantId, {
+          type: 'url',
+          name: 'Bad',
+          url,
+        });
+      }
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(repository.createKnowledgeSource).toHaveBeenCalled();
+      fetchMock.mockRestore();
+    });
+
+    it('caps streamed response bodies and falls back to response.text', async () => {
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.createKnowledgeSource.mockResolvedValue({
+        id: 'ks-stream',
+        organizationId: orgId,
+        assistantId,
+        type: 'url',
+        name: 'Stream',
+        status: 'failed',
+        content: '',
+        url: 'https://example.com/big',
+        createdAt,
+        updatedAt,
+      } as never);
+
+      const fetchMock = jest.spyOn(global, 'fetch' as never) as jest.SpyInstance;
+
+      const oversizedChunk = 'x'.repeat(MAX_OVERSIZE + 10);
+      fetchMock.mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        body: {
+          getReader: () => {
+            let done = false;
+            return {
+              read: async () => {
+                if (done) return { done: true, value: undefined };
+                done = true;
+                return { done: false, value: new TextEncoder().encode(oversizedChunk) };
+              },
+              cancel: async () => undefined,
+            };
+          },
+        },
+      });
+      await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Stream',
+        url: 'https://example.com/big',
+      });
+
+      fetchMock.mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        text: async () => '<p>ok body</p>',
+      });
+      repository.createKnowledgeSource.mockResolvedValueOnce({
+        id: 'ks-ok',
+        organizationId: orgId,
+        assistantId,
+        type: 'url',
+        name: 'Ok',
+        status: 'pending',
+        content: 'ok body',
+        url: 'https://example.com/ok',
+        createdAt,
+        updatedAt,
+      } as never);
+      await service.addKnowledge(userId, orgId, assistantId, {
+        type: 'url',
+        name: 'Ok',
+        url: 'https://example.com/ok',
+      });
+
+      fetchMock.mockRestore();
+    });
+  });
 });
+
+/** Content-Length threshold used by AssistantsService URL fetch guard. */
+const MAX_OVERSIZE = 100_000 * 4 + 1;

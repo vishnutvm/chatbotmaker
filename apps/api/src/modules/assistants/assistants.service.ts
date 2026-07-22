@@ -454,7 +454,7 @@ export class AssistantsService {
       return false;
     }
 
-    const host = parsed.hostname.toLowerCase();
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
     if (
       host === 'localhost' ||
       host === '127.0.0.1' ||
