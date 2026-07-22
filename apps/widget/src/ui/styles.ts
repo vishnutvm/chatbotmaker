@@ -119,6 +119,26 @@ export const WIDGET_STYLES = `
   outline-offset: 1px;
 }
 
+.gw-status {
+  padding: 10px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--gw-border);
+  background: var(--gw-bg);
+  color: var(--gw-muted);
+}
+
+.gw-status[data-kind="error"] {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.gw-root[data-theme="dark"] .gw-status[data-kind="error"] {
+  color: #fecaca;
+  background: #450a0a;
+}
+
+.gw-status[hidden] { display: none !important; }
+
 .gw-messages {
   flex: 1;
   overflow-y: auto;

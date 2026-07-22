@@ -68,6 +68,7 @@ model User {
   ownedOrganizations Organization[]       @relation("OrganizationOwner")
   sentInvitations    OrganizationInvitation[] @relation("InvitationInviter")
   aiUsageEvents      AiUsageEvent[]
+  publishableApiKeys PublishableApiKey[]
 
   @@map("users")
 }
@@ -81,15 +82,37 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  owner         User                      @relation("OrganizationOwner", fields: [ownerId], references: [id])
-  members       OrganizationMember[]
-  invitations   OrganizationInvitation[]
-  aiUsageEvents AiUsageEvent[]
-  assistants    Assistant[]
-  documentChunks DocumentChunk[]
+  owner              User                      @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  members            OrganizationMember[]
+  invitations        OrganizationInvitation[]
+  aiUsageEvents      AiUsageEvent[]
+  assistants         Assistant[]
+  documentChunks     DocumentChunk[]
+  publishableApiKeys PublishableApiKey[]
 
   @@index([ownerId])
   @@map("organizations")
+}
+
+model PublishableApiKey {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String    @default("Default")
+  /// Display only — never the full secret (e.g. pk_live_AbCd…wxyz).
+  keyPrefix      String    @map("key_prefix")
+  /// HMAC-SHA256(pepper, rawKey) hex — unique for O(1) auth lookup.
+  keyHash        String    @unique @map("key_hash")
+  createdById    String    @map("created_by_id") @db.Uuid
+  lastUsedAt     DateTime? @map("last_used_at")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, revokedAt])
+  @@map("publishable_api_keys")
 }
 
 model OrganizationInvitation {

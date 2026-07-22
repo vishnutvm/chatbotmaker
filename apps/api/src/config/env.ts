@@ -44,6 +44,30 @@ export function validateProductionEnv(): void {
   }
 
   validateSupabaseUrlForProduction(process.env.SUPABASE_URL);
+
+  if (!process.env.PUBLISHABLE_KEY_PEPPER?.trim()) {
+    throw new Error(
+      'PUBLISHABLE_KEY_PEPPER is required in production (HMAC pepper for pk_live keys).',
+    );
+  }
+  if (process.env.PUBLISHABLE_KEY_PEPPER.trim().length < 32) {
+    throw new Error('PUBLISHABLE_KEY_PEPPER must be at least 32 characters in production.');
+  }
+}
+
+/**
+ * Pepper for HMAC-SHA256 of publishable keys.
+ * Dev fallback is deterministic for local/tests only — never use in production.
+ */
+export function getPublishableKeyPepper(): string {
+  const value = process.env.PUBLISHABLE_KEY_PEPPER?.trim();
+  if (value) {
+    return value;
+  }
+  if (isProduction()) {
+    throw new Error('PUBLISHABLE_KEY_PEPPER is required in production');
+  }
+  return 'dev-only-publishable-key-pepper-not-for-production';
 }
 
 export function getDatabaseUrl(): string {
@@ -141,6 +165,7 @@ export type StartupEnvSnapshot = {
     supabaseServiceRoleKey: 'set' | 'unset';
     openaiApiKey: 'set' | 'unset';
     stripeSecretKey: 'set' | 'unset';
+    publishableKeyPepper: 'set' | 'default-dev-fallback' | 'unset';
   };
 };
 
@@ -167,6 +192,11 @@ export function buildStartupEnvSnapshot(): StartupEnvSnapshot {
       supabaseServiceRoleKey: secretPresence(process.env.SUPABASE_SERVICE_ROLE_KEY),
       openaiApiKey: secretPresence(process.env.OPENAI_API_KEY),
       stripeSecretKey: secretPresence(process.env.STRIPE_SECRET_KEY),
+      publishableKeyPepper: process.env.PUBLISHABLE_KEY_PEPPER?.trim()
+        ? 'set'
+        : process.env.PUBLISHABLE_KEY_PEPPER === ''
+          ? 'unset'
+          : 'default-dev-fallback',
     },
   };
 }
