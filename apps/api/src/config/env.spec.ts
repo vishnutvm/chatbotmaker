@@ -200,6 +200,20 @@ describe('env helpers', () => {
     expect(snapshot.secrets.openaiApiKey).toBe('unset');
   });
 
+  it('marks empty-string publishable key pepper as unset in startup snapshot', () => {
+    process.env.PUBLISHABLE_KEY_PEPPER = '';
+    const snapshot = buildStartupEnvSnapshot();
+    expect(snapshot.secrets.publishableKeyPepper).toBe('unset');
+  });
+
+  it('falls back to localhost:3000 when CORS_ORIGINS is empty after split', () => {
+    delete process.env.WEB_APP_URL;
+    delete process.env.APP_WEB_URL;
+    process.env.CORS_ORIGINS = ' , , ';
+    expect(getCorsOrigins()).toEqual([]);
+    expect(getWebAppOrigin()).toBe('http://localhost:3000');
+  });
+
   it('treats https localhost Supabase as hs256-secret mode', () => {
     process.env.SUPABASE_URL = 'https://localhost:54321';
     expect(buildStartupEnvSnapshot().jwtVerification).toBe('hs256-secret');

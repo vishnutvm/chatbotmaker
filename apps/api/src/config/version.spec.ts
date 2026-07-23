@@ -6,6 +6,15 @@ describe('version helpers', () => {
     expect(shortSha('abcdef1234567890')).toBe('abcdef1');
   });
 
+  it('prefers GIT_COMMIT_SHA then SOURCE_COMMIT then COMMIT_SHA', () => {
+    expect(resolveGitSha({ GIT_COMMIT_SHA: '1111111111111111', RAILWAY_GIT_COMMIT_SHA: '2222' })).toBe(
+      '1111111111111111',
+    );
+    expect(resolveGitSha({ SOURCE_COMMIT: '3333333333333333' })).toBe('3333333333333333');
+    expect(resolveGitSha({ COMMIT_SHA: '4444444444444444' })).toBe('4444444444444444');
+    expect(resolveGitSha({ GIT_COMMIT_SHA: '   ' })).toBe('unknown');
+  });
+
   it('builds version payload', () => {
     const payload = buildVersionPayload({
       service: 'genie-api',

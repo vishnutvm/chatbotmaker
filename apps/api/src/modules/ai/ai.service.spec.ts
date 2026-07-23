@@ -489,4 +489,22 @@ describe('AiService', () => {
       },
     });
   });
+
+  it('fills missing provider id/model/content when mapping chat response', async () => {
+    aiProvider.chat.mockResolvedValue({
+      id: '',
+      model: '',
+      content: undefined as unknown as string,
+      finishReason: 'stop',
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+    });
+
+    const response = await service.complete(userId, orgId, {
+      messages: [{ role: 'user', content: 'Hi' }],
+    });
+
+    expect(response.id).toMatch(/^chatcmpl_[a-f0-9]+$/);
+    expect(response.model).toBe('gpt-4o-mini');
+    expect(response.content).toBe('');
+  });
 });
