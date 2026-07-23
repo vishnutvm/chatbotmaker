@@ -343,6 +343,16 @@ export class OrganizationsService {
     throw new ForbiddenException('Not a member of this organization');
   }
 
+  /**
+   * Asserts the user is an owner/admin of the organization.
+   * Public for cross-module use (e.g. BillingService).
+   */
+  async requireManagerMembership(userId: string, organizationId: string) {
+    const result = await this.requireMembership(userId, organizationId);
+    this.requireManager(result.membership.role);
+    return result;
+  }
+
   private requireManager(role: OrganizationRole): void {
     if (!MANAGER_ROLES.includes(role)) {
       throw new ForbiddenException('Owner or admin role required');

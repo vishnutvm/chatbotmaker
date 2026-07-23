@@ -106,6 +106,62 @@ export function getWebAppOrigin(): string {
   return getCorsOrigins()[0] ?? 'http://localhost:3000';
 }
 
+/** Stripe secret key — undefined when unset (Checkout/Portal return 503). */
+export function getStripeSecretKey(): string | undefined {
+  const value = process.env.STRIPE_SECRET_KEY?.trim();
+  return value || undefined;
+}
+
+/** Stripe webhook signing secret — undefined when unset. */
+export function getStripeWebhookSecret(): string | undefined {
+  const value = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  return value || undefined;
+}
+
+/** Stripe Price ID for Starter plan. */
+export function getStripePriceStarter(): string | undefined {
+  const value = process.env.STRIPE_PRICE_STARTER?.trim();
+  return value || undefined;
+}
+
+/** Stripe Price ID for Pro plan. */
+export function getStripePricePro(): string | undefined {
+  const value = process.env.STRIPE_PRICE_PRO?.trim();
+  return value || undefined;
+}
+
+/** Checkout success redirect (supports `{CHECKOUT_SESSION_ID}` placeholder). */
+export function getStripeCheckoutSuccessUrl(): string {
+  const explicit = process.env.STRIPE_CHECKOUT_SUCCESS_URL?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  return `${getWebAppOrigin()}/dashboard/billing?billing=success&session_id={CHECKOUT_SESSION_ID}`;
+}
+
+/** Checkout cancel redirect. */
+export function getStripeCheckoutCancelUrl(): string {
+  const explicit = process.env.STRIPE_CHECKOUT_CANCEL_URL?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  return `${getWebAppOrigin()}/dashboard/billing?billing=cancel`;
+}
+
+/** Customer Portal return URL. */
+export function getStripePortalReturnUrl(): string {
+  const explicit = process.env.STRIPE_PORTAL_RETURN_URL?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  return `${getWebAppOrigin()}/dashboard/billing`;
+}
+
+/** True when secret key and both price IDs are configured. */
+export function isStripeBillingConfigured(): boolean {
+  return Boolean(getStripeSecretKey() && getStripePriceStarter() && getStripePricePro());
+}
+
 /** OpenAI API key — undefined when unset (chat endpoints return 503). */
 export function getOpenAiApiKey(): string | undefined {
   const value = process.env.OPENAI_API_KEY?.trim();
@@ -165,6 +221,9 @@ export type StartupEnvSnapshot = {
     supabaseServiceRoleKey: 'set' | 'unset';
     openaiApiKey: 'set' | 'unset';
     stripeSecretKey: 'set' | 'unset';
+    stripeWebhookSecret: 'set' | 'unset';
+    stripePriceStarter: 'set' | 'unset';
+    stripePricePro: 'set' | 'unset';
     publishableKeyPepper: 'set' | 'default-dev-fallback' | 'unset';
   };
 };
@@ -192,6 +251,9 @@ export function buildStartupEnvSnapshot(): StartupEnvSnapshot {
       supabaseServiceRoleKey: secretPresence(process.env.SUPABASE_SERVICE_ROLE_KEY),
       openaiApiKey: secretPresence(process.env.OPENAI_API_KEY),
       stripeSecretKey: secretPresence(process.env.STRIPE_SECRET_KEY),
+      stripeWebhookSecret: secretPresence(process.env.STRIPE_WEBHOOK_SECRET),
+      stripePriceStarter: secretPresence(process.env.STRIPE_PRICE_STARTER),
+      stripePricePro: secretPresence(process.env.STRIPE_PRICE_PRO),
       publishableKeyPepper: process.env.PUBLISHABLE_KEY_PEPPER?.trim()
         ? 'set'
         : process.env.PUBLISHABLE_KEY_PEPPER === ''

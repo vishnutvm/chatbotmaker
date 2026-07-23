@@ -10,6 +10,7 @@ export {
   GeniePublishableKeysClient,
   createPublishableKeysClient,
 } from './publishable-keys';
+export { GenieBillingClient, createBillingClient } from './billing';
 export { createConversationsClient, type ConversationsClient } from './conversations';
 
 import { GenieApiClient } from './client';

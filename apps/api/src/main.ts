@@ -10,7 +10,7 @@ async function bootstrap() {
   validateProductionEnv();
   logStartupEnv();
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   app.enableShutdownHooks();
   // One hop (Railway/reverse proxy) so req.ip is the client for public chat IP rate limits.
   app.set('trust proxy', 1);
