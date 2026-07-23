@@ -20,17 +20,27 @@ const VALID_KEY_2 = 'pk_live_ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210zyxw';
 /**
  * Build a fetch Response-like object with a ReadableStream SSE body.
  * @param {string} sseText
- * @param {{ ok?: boolean, status?: number, jsonBody?: unknown, signal?: AbortSignal, holdOpen?: boolean }} [opts]
+ * @param {{
+ *   ok?: boolean,
+ *   status?: number,
+ *   jsonBody?: unknown,
+ *   signal?: AbortSignal,
+ *   holdOpen?: boolean,
+ *   holdOpenPreface?: string,
+ * }} [opts]
  */
 function mockSseResponse(sseText, opts = {}) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
       if (opts.holdOpen) {
-        // Emit a partial delta then hang until abort/cancel (tests close-abort).
-        controller.enqueue(
-          encoder.encode('event: delta\ndata: {"content":"partial"}\n\n'),
-        );
+        const preface =
+          opts.holdOpenPreface !== undefined
+            ? opts.holdOpenPreface
+            : 'event: delta\ndata: {"content":"partial"}\n\n';
+        if (preface) {
+          controller.enqueue(encoder.encode(preface));
+        }
         const onAbort = () => {
           try {
             controller.close();
@@ -82,6 +92,7 @@ const DEFAULT_SSE = [
  *   streamHttpStatus?: number,
  *   streamJsonBody?: unknown,
  *   streamHoldOpen?: boolean,
+ *   streamHoldOpenPreface?: string,
  * }} [mediaOpts]
  */
 function loadWidgetWithDom(mediaOpts = {}) {
@@ -95,6 +106,7 @@ function loadWidgetWithDom(mediaOpts = {}) {
   const streamHttpStatus = mediaOpts.streamHttpStatus;
   const streamSse = mediaOpts.streamSse ?? DEFAULT_SSE;
   const streamHoldOpen = Boolean(mediaOpts.streamHoldOpen);
+  const streamHoldOpenPreface = mediaOpts.streamHoldOpenPreface;
 
   /** @type {AbortSignal[]} */
   const streamSignals = [];
@@ -145,7 +157,11 @@ function loadWidgetWithDom(mediaOpts = {}) {
           json: async () => mediaOpts.streamJsonBody ?? { message: 'fail' },
         };
       }
-      return mockSseResponse(streamSse, { signal, holdOpen: streamHoldOpen });
+      return mockSseResponse(streamSse, {
+        signal,
+        holdOpen: streamHoldOpen,
+        holdOpenPreface: streamHoldOpenPreface,
+      });
     }
 
     if (!bootstrapOk) {
@@ -542,7 +558,51 @@ describe('widget bubble + panel UI', () => {
     errCtx.api.destroy();
   });
 
-  it('aborts in-flight stream when panel closes', async () => {
+  it('marks in-flight assistant bubble and aria-busy until first delta', async () => {
+    const holdCtx = loadWidgetWithDom({
+      streamHoldOpen: true,
+      streamHoldOpenPreface: '', // hang with no deltas
+    });
+    holdCtx.api.init({
+      apiKey: VALID_KEY,
+      assistantId: 'asst_smoke',
+      apiBaseUrl: 'https://api.test',
+    });
+    await waitForAuth(holdCtx.document, 'ready');
+    holdCtx.api.open();
+
+    const shadow = holdCtx.document.getElementById('genie-widget-root').shadowRoot;
+    const panel = shadow.getElementById('gw-panel');
+    const messages = shadow.getElementById('gw-messages');
+    const input = shadow.getElementById('gw-input');
+    const form = shadow.getElementById('gw-form');
+
+    input.value = 'Waiting affordance';
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    const start = Date.now();
+    /** @type {HTMLElement | null} */
+    let streamingBubble = null;
+    while (Date.now() - start < 1000) {
+      const bots = shadow.querySelectorAll('.gw-msg[data-role="assistant"][data-streaming="true"]');
+      streamingBubble = bots[bots.length - 1] ?? null;
+      if (streamingBubble && panel.getAttribute('aria-busy') === 'true') break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.ok(streamingBubble, 'expected data-streaming assistant bubble');
+    assert.equal(streamingBubble.getAttribute('aria-busy'), 'true');
+    assert.equal(streamingBubble.textContent, '');
+    assert.equal(panel.getAttribute('aria-busy'), 'true');
+    assert.equal(messages.getAttribute('aria-busy'), 'true');
+    assert.equal(input.disabled, true);
+
+    holdCtx.api.close();
+    holdCtx.api.destroy();
+  });
+
+  it('aborts in-flight stream when panel closes and keeps partial reply', async () => {
     const holdCtx = loadWidgetWithDom({ streamHoldOpen: true });
     holdCtx.api.init({
       apiKey: VALID_KEY,
@@ -556,6 +616,8 @@ describe('widget bubble + panel UI', () => {
     const input = shadow.getElementById('gw-input');
     const form = shadow.getElementById('gw-form');
     const sendBtn = shadow.querySelector('.gw-send');
+    const panel = shadow.getElementById('gw-panel');
+    const messages = shadow.getElementById('gw-messages');
 
     input.value = 'Abort on close';
     form.dispatchEvent(
@@ -576,11 +638,111 @@ describe('widget bubble + panel UI', () => {
     assert.equal(holdCtx.streamSignals[0].aborted, true);
     assert.equal(input.disabled, false);
     assert.equal(sendBtn.disabled, false);
+    assert.equal(panel.hasAttribute('aria-busy'), false);
+    assert.equal(messages.hasAttribute('aria-busy'), false);
+
+    // Partial text is kept; streaming marker cleared.
+    const botMsgs = shadow.querySelectorAll('.gw-msg[data-role="assistant"]');
+    const last = botMsgs[botMsgs.length - 1];
+    assert.equal(last.textContent, 'partial');
+    assert.equal(last.hasAttribute('data-streaming'), false);
 
     // Abort must not surface a visitor error.
     const status = shadow.getElementById('gw-status');
     assert.ok(status.hidden || !/Something went wrong|Network error|Connection lost/i.test(status.textContent));
     holdCtx.api.destroy();
+  });
+
+  it('removes empty assistant bubble when stream aborts before first delta', async () => {
+    const holdCtx = loadWidgetWithDom({
+      streamHoldOpen: true,
+      streamHoldOpenPreface: '',
+    });
+    holdCtx.api.init({
+      apiKey: VALID_KEY,
+      assistantId: 'asst_smoke',
+      apiBaseUrl: 'https://api.test',
+    });
+    await waitForAuth(holdCtx.document, 'ready');
+    holdCtx.api.open();
+
+    const shadow = holdCtx.document.getElementById('genie-widget-root').shadowRoot;
+    const input = shadow.getElementById('gw-input');
+    const form = shadow.getElementById('gw-form');
+    const messages = shadow.getElementById('gw-messages');
+
+    const botsBefore = shadow.querySelectorAll('.gw-msg[data-role="assistant"]').length;
+
+    input.value = 'Abort empty bubble';
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    // Wait until streaming bubble exists
+    const startWait = Date.now();
+    while (Date.now() - startWait < 1000) {
+      if (shadow.querySelector('.gw-msg[data-role="assistant"][data-streaming="true"]')) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.ok(shadow.querySelector('.gw-msg[data-role="assistant"][data-streaming="true"]'));
+
+    holdCtx.api.close();
+
+    const start = Date.now();
+    while (Date.now() - start < 1000) {
+      if (
+        holdCtx.streamSignals[0]?.aborted &&
+        !shadow.querySelector('.gw-msg[data-role="assistant"][data-streaming="true"]') &&
+        !messages.hasAttribute('aria-busy')
+      ) {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 10));
+    }
+
+    assert.equal(holdCtx.streamSignals[0].aborted, true);
+    assert.equal(messages.hasAttribute('aria-busy'), false);
+    // Empty in-flight assistant removed; welcome (if any) remains.
+    const botsAfter = shadow.querySelectorAll('.gw-msg[data-role="assistant"]');
+    assert.equal(botsAfter.length, botsBefore);
+    for (const el of botsAfter) {
+      assert.ok(el.textContent.trim().length > 0);
+      assert.equal(el.hasAttribute('data-streaming'), false);
+    }
+
+    const status = shadow.getElementById('gw-status');
+    assert.ok(status.hidden || !/Something went wrong|Network error|Connection lost/i.test(status.textContent));
+    holdCtx.api.destroy();
+  });
+
+  it('shows generic error for unknown HTTP status codes', async () => {
+    const errCtx = loadWidgetWithDom({ streamHttpStatus: 418 });
+    errCtx.api.init({
+      apiKey: VALID_KEY,
+      assistantId: 'asst_smoke',
+      apiBaseUrl: 'https://api.test',
+    });
+    await waitForAuth(errCtx.document, 'ready');
+    errCtx.api.open();
+
+    const shadow = errCtx.document.getElementById('genie-widget-root').shadowRoot;
+    const form = shadow.getElementById('gw-form');
+    shadow.getElementById('gw-input').value = 'Teapot';
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    const start = Date.now();
+    let status;
+    while (Date.now() - start < 1000) {
+      status = shadow.getElementById('gw-status');
+      if (status && !status.hidden && /Something went wrong/i.test(status.textContent)) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.ok(status && !status.hidden);
+    assert.match(status.textContent, /Something went wrong — try again\./);
+    assert.ok(!/418|Request failed/i.test(status.textContent));
+    errCtx.api.destroy();
   });
 
   it('maps SSE error events to visitor-safe messages (no raw server message)', async () => {

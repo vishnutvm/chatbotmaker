@@ -176,6 +176,33 @@ export const WIDGET_STYLES = `
   background: var(--gw-bot-bg);
 }
 
+/* In-flight assistant bubble before first delta */
+.gw-msg[data-role="assistant"][data-streaming="true"]:empty::before {
+  content: '';
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 1em;
+}
+
+.gw-msg[data-role="assistant"][data-streaming="true"]:empty::after {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--gw-muted);
+  box-shadow: 8px 0 0 var(--gw-muted), 16px 0 0 var(--gw-muted);
+  animation: gw-typing 1.2s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+@keyframes gw-typing {
+  0%, 80%, 100% { opacity: 0.35; }
+  40% { opacity: 1; }
+}
+
 .gw-composer {
   display: flex;
   gap: 8px;
@@ -200,6 +227,10 @@ export const WIDGET_STYLES = `
   outline: 2px solid var(--gw-accent);
   outline-offset: 1px;
   border-color: transparent;
+}
+.gw-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .gw-send {

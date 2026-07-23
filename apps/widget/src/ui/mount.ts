@@ -164,6 +164,21 @@ export function mountWidget(options: MountOptions): WidgetMount {
     delete statusEl.dataset.kind;
   }
 
+  function setStreamBusy(busy: boolean): void {
+    if (busy) {
+      panel.setAttribute('aria-busy', 'true');
+      messages.setAttribute('aria-busy', 'true');
+    } else {
+      panel.removeAttribute('aria-busy');
+      messages.removeAttribute('aria-busy');
+    }
+  }
+
+  function clearStreamingMarker(el: HTMLElement): void {
+    delete el.dataset.streaming;
+    el.removeAttribute('aria-busy');
+  }
+
   applyAuthUi(authState, options.authMessage);
 
   function abortInFlightStream(): void {
@@ -232,10 +247,13 @@ export function mountWidget(options: MountOptions): WidgetMount {
     appendMessage('user', text);
 
     const assistantEl = appendMessage('assistant', '');
+    assistantEl.dataset.streaming = 'true';
+    assistantEl.setAttribute('aria-busy', 'true');
     let accumulated = '';
     let failed = false;
 
     streaming = true;
+    setStreamBusy(true);
     syncComposerEnabled();
     streamAbort = new AbortController();
     const { signal } = streamAbort;
@@ -250,12 +268,16 @@ export function mountWidget(options: MountOptions): WidgetMount {
       signal,
       onDelta: (chunk) => {
         if (destroyed) return;
+        if (assistantEl.dataset.streaming) {
+          clearStreamingMarker(assistantEl);
+        }
         accumulated += chunk;
         assistantEl.textContent = accumulated;
         messages.scrollTop = messages.scrollHeight;
       },
       onDone: () => {
         if (destroyed || failed) return;
+        clearStreamingMarker(assistantEl);
         if (accumulated) {
           history.push({ role: 'assistant', content: accumulated });
         } else {
@@ -263,8 +285,10 @@ export function mountWidget(options: MountOptions): WidgetMount {
         }
       },
       onError: (message) => {
+        // Intentional abort (close/Escape) — no visitor error.
         if (destroyed || signal.aborted) return;
         failed = true;
+        clearStreamingMarker(assistantEl);
         showChatError(message);
         if (!accumulated) {
           assistantEl.remove();
@@ -275,6 +299,16 @@ export function mountWidget(options: MountOptions): WidgetMount {
       if (destroyed) return;
       streaming = false;
       streamAbort = null;
+      setStreamBusy(false);
+      clearStreamingMarker(assistantEl);
+
+      // Abort cleanup: drop empty in-flight bubble; keep partial reply.
+      if (signal.aborted) {
+        if (!accumulated) {
+          assistantEl.remove();
+        }
+      }
+
       syncComposerEnabled();
       if (authState === 'ready' && openState) {
         input.focus();
