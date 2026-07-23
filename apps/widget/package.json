@@ -8,13 +8,14 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "echo \"No lint configured for @genie/widget\"",
-    "test": "pnpm build && node --test scripts/widget.test.mjs",
+    "test": "pnpm build && node --test scripts/widget.test.mjs && node --import tsx --test scripts/chat-stream.test.mjs",
     "smoke": "pnpm build && node --test scripts/widget.test.mjs"
   },
   "devDependencies": {
     "@genie/config": "workspace:*",
     "linkedom": "0.18.11",
     "tsup": "^8.4.0",
+    "tsx": "^4.19.4",
     "typescript": "^5.7.2"
   }
 }
