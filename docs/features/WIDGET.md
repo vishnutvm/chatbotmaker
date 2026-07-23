@@ -1,6 +1,6 @@
 # Embeddable Widget (Phase 7)
 
-**Status:** In progress — `pk_live` auth + dashboard embed snippet generator  
+**Status:** In progress — CDN hosting path (GCS) + `pk_live` auth + dashboard embed snippet  
 **Package:** `apps/widget` (`@genie/widget`)  
 **Roadmap:** Phase 7 — Widget
 
@@ -13,6 +13,7 @@
 | Bubble + panel | Floating FAB + Shadow DOM chat panel |
 | **`pk_live` auth** | Client validates `pk_live_…`; calls public bootstrap with `X-Genie-Public-Key` |
 | **Dashboard embed snippet** | Deploy tab + wizard — create `pk_live`, copy HTML snippet |
+| **GCS CDN path** | Dedicated bucket + deploy scripts + CI artifact; set `NEXT_PUBLIC_WIDGET_SCRIPT_URL` when live |
 | Themes | `theme: 'light' \| 'dark' \| 'auto'` (default `auto`) |
 | Isolation | No Next.js / dashboard / React runtime in the bundle |
 | Smoke | `fixtures/smoke.html` + `node --test scripts/widget.test.mjs` after build |
@@ -20,7 +21,7 @@
 ## Embed contract (script tag)
 
 ```html
-<script src="https://cdn.example.com/widget.js"></script>
+<script src="https://cdn.<your-domain>/widget.js"></script>
 <script>
   GenieWidget.init({
     apiKey: 'pk_live_…',
@@ -34,7 +35,8 @@
 
 **Notes**
 
-- **CDN host** (Cloudflare) is deferred — set `NEXT_PUBLIC_WIDGET_SCRIPT_URL` in Vercel when `widget.js` is hosted.
+- **CDN host (GCS):** see `docs/deployment/WIDGET_CDN.md` and ADR `docs/adr/0006-widget-cdn-gcs.md`. Until GCP auth is configured, dashboard defaults to placeholder `https://cdn.example.com/widget.js`.
+- **Production URL pattern:** `https://cdn.<your-domain>/widget.js` → set as `NEXT_PUBLIC_WIDGET_SCRIPT_URL` in Vercel.
 - **Key issuance:** owner/admin `POST /api/v1/organizations/:id/public-keys` (see `docs/api/publishable-keys.md`).
 - **Dashboard UI:** `apps/web` Deploy tab (`/dashboard/assistants/:id/deploy`) — `EmbedSnippetPanel` lists keys, creates `pk_live`, builds snippet via `buildEmbedSnippet`.
 - **Bootstrap:** `GET /api/v1/public/widget/bootstrap?assistantId=…` with `X-Genie-Public-Key` (see `docs/api/widget-public.md`).
@@ -68,19 +70,25 @@
 2. **Ready** — Welcome message applied; composer enabled.
 3. **Error** — Invalid/revoked key, missing assistant, or network; clear in-panel message.
 
-## Build & verify
+## Build, CDN deploy & verify
 
 ```bash
 pnpm --filter @genie/widget build
 pnpm --filter @genie/widget test
 pnpm --filter @genie/widget typecheck
 pnpm --filter @genie/web test   # embed-snippet unit tests
+
+# Publish to GCS (requires gcloud auth — see WIDGET_CDN.md)
+./scripts/deploy-widget-cdn.sh
+# PowerShell: .\scripts\deploy-widget-cdn.ps1
 ```
+
+CI: `.github/workflows/deploy-widget-cdn.yml` builds and uploads a `widget.js` artifact on `main`; GCS publish is gated on `ENABLE_WIDGET_CDN_DEPLOY` + GCP secrets.
 
 ## Out of scope (later P7 P0s)
 
-- Cloudflare CDN hosting
 - Live assistant streaming over the public widget API
+- Long-cache versioned filenames (`widget-<semver>.js`) — optional Phase 10 hardening
 
 ## Architecture decisions
 
@@ -90,3 +98,4 @@ pnpm --filter @genie/web test   # embed-snippet unit tests
 4. **Header auth** — never put `pk_live` in query strings.
 5. **Tenant from key** — server derives org from hashed key; assistant must be `live` and same-org.
 6. **Snippet builder in web lib** — pure function `buildEmbedSnippet`; no secrets in repo.
+7. **CDN = GCS** — consolidated with Cloud Run ops; see ADR 0006 (supersedes Cloudflare R2 ADR 0005).

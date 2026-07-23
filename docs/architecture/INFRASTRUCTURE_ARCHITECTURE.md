@@ -1,6 +1,6 @@
 # Infrastructure Architecture
 
-**Last Updated:** 2026-07-07  
+**Last Updated:** 2026-07-22  
 **Canonical MVP Stack**
 
 ---
@@ -41,11 +41,11 @@ These remain documented as **future scale options** only.
 ```text
 Cloudflare
     |
-    +----------------------+
-    |                      |
-    v                      v
-Marketing (Vercel)    Dashboard (Vercel)
-    |                      |
+    +----------------------+----------------------+
+    |                      |                      |
+    v                      v                      v
+Marketing (Vercel)    Dashboard (Vercel)    Widget CDN (GCS)
+    |                      |               storage.googleapis.com/…/widget.js
     +----------+-----------+
                |
                v
@@ -90,9 +90,15 @@ Marketing (Vercel)    Dashboard (Vercel)
 
 ### Cloudflare
 
-- DNS for custom domains
-- CDN for static assets and widget
-- WAF rules (production)
+- DNS for custom domains (optional)
+- CDN/WAF for marketing domains when used
+- **Widget.js** is hosted on **GCS** (ADR 0006), not R2 — see `docs/deployment/WIDGET_CDN.md`
+
+### Google Cloud Storage (Widget CDN)
+
+- Dedicated bucket for `widget.js`
+- Deploy: `scripts/deploy-widget-cdn.sh` — ADR 0006
+- Optional Cloud CDN + custom domain later
 
 ### OpenAI
 

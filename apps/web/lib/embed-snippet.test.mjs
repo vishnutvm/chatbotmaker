@@ -148,6 +148,19 @@ describe('buildEmbedSnippet', () => {
       /pk_live_/,
     );
   });
+
+  it('rejects non-https widgetScriptUrl', async () => {
+    const { buildEmbedSnippet } = await import('./embed-snippet.ts');
+    assert.throws(
+      () =>
+        buildEmbedSnippet({
+          widgetScriptUrl: 'http://cdn.example.com/widget.js',
+          apiKey: VALID_KEY,
+          assistantId: 'a1',
+        }),
+      /absolute https URL/,
+    );
+  });
 });
 
 describe('getWidgetScriptUrl', () => {
@@ -183,6 +196,32 @@ describe('getWidgetScriptUrl', () => {
       './widget-config.ts'
     );
     assert.equal(getWidgetScriptUrl(), PLACEHOLDER_WIDGET_SCRIPT_URL);
+  });
+
+  it('falls back when env is not https', async () => {
+    process.env.NEXT_PUBLIC_WIDGET_SCRIPT_URL = 'http://cdn.genie.app/widget.js';
+    const { getWidgetScriptUrl, PLACEHOLDER_WIDGET_SCRIPT_URL } = await import(
+      './widget-config.ts'
+    );
+    assert.equal(getWidgetScriptUrl(), PLACEHOLDER_WIDGET_SCRIPT_URL);
+  });
+
+  it('falls back for protocol-relative and javascript URLs', async () => {
+    const { getWidgetScriptUrl, PLACEHOLDER_WIDGET_SCRIPT_URL } = await import(
+      './widget-config.ts'
+    );
+    process.env.NEXT_PUBLIC_WIDGET_SCRIPT_URL = '//evil.example/widget.js';
+    assert.equal(getWidgetScriptUrl(), PLACEHOLDER_WIDGET_SCRIPT_URL);
+    process.env.NEXT_PUBLIC_WIDGET_SCRIPT_URL = 'javascript:alert(1)';
+    assert.equal(getWidgetScriptUrl(), PLACEHOLDER_WIDGET_SCRIPT_URL);
+  });
+
+  it('documents production CDN URL pattern', async () => {
+    const { PRODUCTION_WIDGET_SCRIPT_URL_PATTERN } = await import('./widget-config.ts');
+    assert.equal(
+      PRODUCTION_WIDGET_SCRIPT_URL_PATTERN,
+      'https://cdn.<your-domain>/widget.js',
+    );
   });
 });
 

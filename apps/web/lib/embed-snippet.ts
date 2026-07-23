@@ -1,3 +1,5 @@
+import { isHttpsWidgetScriptUrl } from './widget-config';
+
 export interface EmbedSnippetInput {
   widgetScriptUrl: string;
   apiKey: string;
@@ -25,6 +27,9 @@ export function buildEmbedSnippet(input: EmbedSnippetInput): string {
 
   if (!widgetScriptUrl) {
     throw new Error('widgetScriptUrl is required');
+  }
+  if (!isHttpsWidgetScriptUrl(widgetScriptUrl)) {
+    throw new Error('widgetScriptUrl must be an absolute https URL');
   }
   if (!apiKey) {
     throw new Error('apiKey is required');
