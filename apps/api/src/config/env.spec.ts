@@ -6,9 +6,17 @@ import {
   getOpenAiApiKey,
   getPublishableKeyPepper,
   getRequiredEnv,
+  getStripeCheckoutCancelUrl,
+  getStripeCheckoutSuccessUrl,
+  getStripePortalReturnUrl,
+  getStripePricePro,
+  getStripePriceStarter,
+  getStripeSecretKey,
+  getStripeWebhookSecret,
   getSupabaseJwtSecret,
   getSupabaseUrl,
   getWebAppOrigin,
+  isStripeBillingConfigured,
   logStartupEnv,
   redactPostgresUrl,
   validateProductionEnv,
@@ -251,5 +259,47 @@ describe('buildStartupEnvSnapshot', () => {
     expect(snapshot.corsOrigins).toEqual(['https://chatbotmaker-dev.vercel.app']);
     expect(snapshot.aiDefaultModel).toBe('gpt-4o-mini');
     expect(snapshot.secrets.openaiApiKey).toBe('set');
+    expect(snapshot.secrets.stripeWebhookSecret).toBe('unset');
+    expect(snapshot.secrets.stripePriceStarter).toBe('unset');
+    expect(snapshot.secrets.stripePricePro).toBe('unset');
+  });
+});
+
+describe('Stripe billing env helpers', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it('isStripeBillingConfigured requires secret + both prices', () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.STRIPE_PRICE_STARTER;
+    delete process.env.STRIPE_PRICE_PRO;
+    expect(isStripeBillingConfigured()).toBe(false);
+
+    process.env.STRIPE_SECRET_KEY = 'sk_test';
+    process.env.STRIPE_PRICE_STARTER = 'price_s';
+    expect(isStripeBillingConfigured()).toBe(false);
+
+    process.env.STRIPE_PRICE_PRO = 'price_p';
+    expect(isStripeBillingConfigured()).toBe(true);
+    expect(getStripeSecretKey()).toBe('sk_test');
+    expect(getStripePriceStarter()).toBe('price_s');
+    expect(getStripePricePro()).toBe('price_p');
+  });
+
+  it('defaults checkout/portal URLs from web app origin', () => {
+    delete process.env.STRIPE_CHECKOUT_SUCCESS_URL;
+    delete process.env.STRIPE_CHECKOUT_CANCEL_URL;
+    delete process.env.STRIPE_PORTAL_RETURN_URL;
+    process.env.WEB_APP_URL = 'https://app.example.com';
+
+    expect(getStripeCheckoutSuccessUrl()).toContain('/dashboard/billing?billing=success');
+    expect(getStripeCheckoutCancelUrl()).toBe(
+      'https://app.example.com/dashboard/billing?billing=cancel',
+    );
+    expect(getStripePortalReturnUrl()).toBe('https://app.example.com/dashboard/billing');
+    expect(getStripeWebhookSecret()).toBeUndefined();
   });
 });

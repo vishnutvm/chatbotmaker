@@ -89,9 +89,39 @@ model Organization {
   assistants         Assistant[]
   documentChunks     DocumentChunk[]
   publishableApiKeys PublishableApiKey[]
+  subscription       OrganizationSubscription?
 
   @@index([ownerId])
   @@map("organizations")
+}
+
+model OrganizationSubscription {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String    @unique @map("organization_id") @db.Uuid
+  stripeCustomerId     String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?   @unique @map("stripe_subscription_id")
+  stripePriceId        String?   @map("stripe_price_id")
+  plan                 String    @default("free")
+  status               String    @default("none")
+  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
+  currentPeriodStart   DateTime? @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd     DateTime? @map("current_period_end") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_subscriptions")
+}
+
+model StripeWebhookEvent {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId     String    @unique @map("event_id")
+  type        String
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("stripe_webhook_events")
 }
 
 model PublishableApiKey {

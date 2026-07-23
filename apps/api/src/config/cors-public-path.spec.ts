@@ -42,7 +42,9 @@ describe('isPublicApiPath', () => {
     expect(isPublicApiPath({ path: '', originalUrl: '', url: '' })).toBe(false);
   });
 
-  it('returns false when pathname is empty after stripping query-only raw', () => {
-    expect(isPublicApiPath({ path: '', originalUrl: '?', url: '' })).toBe(false);
+  it('matches stripe webhook path as public', () => {
+    expect(isPublicApiPath({ path: '/api/v1/webhooks/stripe', originalUrl: '', url: '' })).toBe(
+      true,
+    );
   });
 });

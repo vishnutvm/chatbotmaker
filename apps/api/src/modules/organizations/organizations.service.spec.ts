@@ -110,6 +110,29 @@ describe('OrganizationsService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('requireManagerMembership allows owner and rejects member', async () => {
+    organizationsRepository.findMembershipWithOrganization.mockResolvedValue(
+      ownerMembership as never,
+    );
+    await expect(service.requireManagerMembership('user-1', 'org-1')).resolves.toMatchObject({
+      membership: { role: 'owner' },
+    });
+
+    organizationsRepository.findMembershipWithOrganization.mockResolvedValue({
+      id: 'm2',
+      userId: 'user-2',
+      organizationId: 'org-1',
+      role: 'member',
+      createdAt: org.createdAt,
+      updatedAt: org.updatedAt,
+      organization: org,
+    } as never);
+
+    await expect(service.requireManagerMembership('user-2', 'org-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
   it('allows admins to update organization name', async () => {
     organizationsRepository.findMembershipWithOrganization.mockResolvedValue({
       id: 'm2',
