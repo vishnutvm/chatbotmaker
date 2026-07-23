@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { TopHeader } from '@/components/shell/TopHeader';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -68,9 +68,10 @@ export default function Billing() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<'checkout' | 'portal' | null>(null);
+  const orgId = activeOrg?.id ?? null;
 
-  const load = useCallback(async () => {
-    if (!activeOrg?.id) {
+  async function load() {
+    if (!orgId) {
       setData(null);
       setLoading(false);
       setError(null);
@@ -85,7 +86,7 @@ export default function Billing() {
         throw new Error('Not signed in');
       }
       const client = createBillingClient(getApiBaseUrl());
-      const subscription = await client.getSubscription(token, activeOrg.id);
+      const subscription = await client.getSubscription(token, orgId);
       setData(subscription);
     } catch (err) {
       setData(null);
@@ -93,11 +94,12 @@ export default function Billing() {
     } finally {
       setLoading(false);
     }
-  }, [activeOrg?.id]);
+  }
 
   useEffect(() => {
     void load();
-  }, [load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when org changes
+  }, [orgId]);
 
   useEffect(() => {
     if (billingFlag === 'success') {
@@ -108,7 +110,8 @@ export default function Billing() {
     } else if (billingFlag === 'cancel') {
       toast.message('Checkout canceled');
     }
-  }, [billingFlag, load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- toast once on return query
+  }, [billingFlag]);
 
   const periodEndLabel = useMemo(
     () => formatPeriodEnd(data?.currentPeriodEnd ?? null),
