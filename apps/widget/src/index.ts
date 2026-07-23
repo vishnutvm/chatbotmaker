@@ -26,6 +26,8 @@ export function init(config: GenieWidgetConfig): void {
     theme: validated.theme ?? 'auto',
     title: validated.title ?? 'Chat',
     assistantId: validated.assistantId,
+    apiKey: validated.apiKey,
+    apiBaseUrl: validated.apiBaseUrl,
     authState: 'loading',
     authMessage: 'Connecting…',
   });

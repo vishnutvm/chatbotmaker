@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { AiActor } from '../ai/ai-actor';
 import { AiService } from '../ai/ai.service';
 import { DocumentChunksRepository, type RetrievedChunk } from './document-chunks.repository';
 
@@ -15,24 +16,41 @@ export class RagRetrievalService {
   ) {}
 
   async retrieveForQuery(input: {
-    userId: string;
+    actor: AiActor;
     organizationId: string;
     assistantId: string;
     query: string;
     topK?: number;
+    signal?: AbortSignal;
+    /** When false, skip OpenAI embed (no ready knowledge / no chunks needed). */
+    hasReadyKnowledge?: boolean;
   }): Promise<RetrievedChunk[]> {
+    if (input.hasReadyKnowledge === false) {
+      return [];
+    }
+
     const query = input.query.trim();
     if (!query) {
       return [];
     }
 
+    if (input.signal?.aborted) {
+      const abortErr = new Error('Aborted');
+      abortErr.name = 'AbortError';
+      throw abortErr;
+    }
+
     try {
-      const { embeddings } = await this.aiService.embed(input.userId, input.organizationId, [
-        query,
-      ]);
+      const { embeddings } = await this.aiService.embed(input.actor, [query], input.signal);
       const queryEmbedding = embeddings[0];
       if (!queryEmbedding?.length) {
         return [];
+      }
+
+      if (input.signal?.aborted) {
+        const abortErr = new Error('Aborted');
+        abortErr.name = 'AbortError';
+        throw abortErr;
       }
 
       return this.chunksRepository.similaritySearch({
@@ -42,6 +60,15 @@ export class RagRetrievalService {
         topK: input.topK ?? RAG_TOP_K,
       });
     } catch (error) {
+      if (
+        (error instanceof Error && error.name === 'AbortError') ||
+        (typeof error === 'object' &&
+          error !== null &&
+          'name' in error &&
+          (error as { name: string }).name === 'AbortError')
+      ) {
+        throw error;
+      }
       this.logger.warn('RAG retrieval failed; caller should fallback', {
         name: error instanceof Error ? error.name : 'unknown',
       });

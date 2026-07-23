@@ -12,6 +12,8 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.enableShutdownHooks();
+  // One hop (Railway/reverse proxy) so req.ip is the client for public chat IP rate limits.
+  app.set('trust proxy', 1);
 
   app.setGlobalPrefix('api/v1', { exclude: ['health', 'version'] });
   app.useGlobalPipes(
@@ -30,7 +32,7 @@ async function bootstrap() {
         origin: true,
         credentials: false,
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Genie-Public-Key'],
-        methods: ['GET', 'OPTIONS'],
+        methods: ['GET', 'POST', 'OPTIONS'],
       });
       return;
     }

@@ -1,4 +1,5 @@
 import type { AiService } from '../ai/ai.service';
+import { memberActor } from '../ai/ai-actor';
 import type { DocumentChunksRepository } from './document-chunks.repository';
 import { RagRetrievalService, RAG_TOP_K } from './rag-retrieval.service';
 
@@ -7,8 +8,9 @@ describe('RagRetrievalService', () => {
   let aiService: jest.Mocked<Pick<AiService, 'embed'>>;
   let service: RagRetrievalService;
 
+  const actor = memberActor('user-1', 'org-1');
   const baseInput = {
-    userId: 'user-1',
+    actor,
     organizationId: 'org-1',
     assistantId: 'asst-1',
     query: 'refund policy',
@@ -74,6 +76,36 @@ describe('RagRetrievalService', () => {
       expect(chunksRepository.similaritySearch).not.toHaveBeenCalled();
     });
 
+    it('returns empty array when hasReadyKnowledge is false without calling embed', async () => {
+      const result = await service.retrieveForQuery({
+        ...baseInput,
+        hasReadyKnowledge: false,
+      });
+
+      expect(result).toEqual([]);
+      expect(aiService.embed).not.toHaveBeenCalled();
+      expect(chunksRepository.similaritySearch).not.toHaveBeenCalled();
+    });
+
+    it('propagates AbortError from embed without swallowing', async () => {
+      const abortErr = new Error('Aborted');
+      abortErr.name = 'AbortError';
+      aiService.embed.mockRejectedValue(abortErr);
+
+      await expect(service.retrieveForQuery(baseInput)).rejects.toMatchObject({
+        name: 'AbortError',
+      });
+      expect(chunksRepository.similaritySearch).not.toHaveBeenCalled();
+    });
+
+    it('passes signal to embed', async () => {
+      const signal = AbortSignal.abort();
+      await expect(
+        service.retrieveForQuery({ ...baseInput, signal }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(aiService.embed).not.toHaveBeenCalled();
+    });
+
     it('embeds query and returns chunks from similaritySearch', async () => {
       const queryEmbedding = [0.1, 0.2, 0.3];
       const chunks = [
@@ -93,7 +125,7 @@ describe('RagRetrievalService', () => {
 
       const result = await service.retrieveForQuery(baseInput);
 
-      expect(aiService.embed).toHaveBeenCalledWith('user-1', 'org-1', ['refund policy']);
+      expect(aiService.embed).toHaveBeenCalledWith(actor, ['refund policy'], undefined);
       expect(chunksRepository.similaritySearch).toHaveBeenCalledWith({
         organizationId: 'org-1',
         assistantId: 'asst-1',

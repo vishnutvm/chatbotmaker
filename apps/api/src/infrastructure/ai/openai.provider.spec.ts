@@ -355,10 +355,13 @@ describe('OpenAiProvider', () => {
     const provider = new OpenAiProvider();
     const vector = await provider.embed('hello');
 
-    expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-      model: 'text-embedding-3-large',
-      input: 'hello',
-    });
+    expect(mockEmbeddingsCreate).toHaveBeenCalledWith(
+      {
+        model: 'text-embedding-3-large',
+        input: 'hello',
+      },
+      undefined,
+    );
     expect(vector).toEqual([0.1, 0.2]);
   });
 
@@ -375,10 +378,13 @@ describe('OpenAiProvider', () => {
     const provider = new OpenAiProvider();
     const vectors = await provider.embed(['a', 'b']);
 
-    expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-      model: 'text-embedding-3-small',
-      input: ['a', 'b'],
-    });
+    expect(mockEmbeddingsCreate).toHaveBeenCalledWith(
+      {
+        model: 'text-embedding-3-small',
+        input: ['a', 'b'],
+      },
+      undefined,
+    );
     expect(vectors).toEqual([[0.1], [0.2]]);
   });
 

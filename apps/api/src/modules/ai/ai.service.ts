@@ -15,6 +15,8 @@ import type {
 import { AI_PROVIDER } from '../../infrastructure/ai/ai.interface';
 import { getOpenAiApiKey } from '../../config/env';
 import { OrganizationsService } from '../organizations/organizations.service';
+import type { AiActor } from './ai-actor';
+import { actorUserId } from './ai-actor';
 import { AiRateLimiter } from './ai-rate-limiter';
 import { AiUsageRepository } from './ai-usage.repository';
 import type { ChatCompletionDto } from './dto/chat-completion.dto';
@@ -33,7 +35,7 @@ export type ChatCompletionResponse = {
 };
 
 export type AiSseEvent =
-  | { event: 'meta'; data: { organizationId: string; model: string } }
+  | { event: 'meta'; data: { organizationId?: string; model: string } }
   | { event: 'delta'; data: { content: string } }
   | {
       event: 'done';
@@ -46,7 +48,7 @@ export type AiSseEvent =
 
 type PreparedChat = {
   organizationId: string;
-  userId: string;
+  userId: string | null;
   model: string;
   messages: ChatMessage[];
   maxTokens: number;
@@ -66,13 +68,10 @@ export class AiService {
     private readonly rateLimiter: AiRateLimiter,
   ) {}
 
-  async complete(
-    userId: string,
-    organizationId: string,
-    dto: ChatCompletionDto,
-  ): Promise<ChatCompletionResponse> {
-    const prepared = await this.prepare(userId, organizationId, dto);
+  async complete(actor: AiActor, dto: ChatCompletionDto): Promise<ChatCompletionResponse> {
+    const prepared = await this.prepare(actor, dto);
     const startedAt = Date.now();
+    const { organizationId, userId } = prepared;
 
     try {
       const result = await this.aiProvider.chat({
@@ -114,17 +113,21 @@ export class AiService {
    * before the first yield so the controller can return normal HTTP errors.
    */
   async *stream(
-    userId: string,
-    organizationId: string,
+    actor: AiActor,
     dto: ChatCompletionDto,
     signal?: AbortSignal,
   ): AsyncGenerator<AiSseEvent> {
-    const prepared = await this.prepare(userId, organizationId, dto);
+    const prepared = await this.prepare(actor, dto);
     const startedAt = Date.now();
+    const { organizationId, userId } = prepared;
 
+    // Organization (public widget) streams omit organizationId from meta.
     yield {
       event: 'meta',
-      data: { organizationId, model: prepared.model },
+      data:
+        actor.type === 'organization'
+          ? { model: prepared.model }
+          : { organizationId, model: prepared.model },
     };
 
     let usage: ChatUsage = {
@@ -204,26 +207,35 @@ export class AiService {
   }
 
   /**
-   * Batch-embed texts via AIProvider. Membership + rate limit + usage metering apply.
+   * Batch-embed texts via AIProvider.
+   * Member actors: membership + AiRateLimiter + usage.userId.
+   * Organization actors: skip membership/RL; usage.userId null.
    */
   async embed(
-    userId: string,
-    organizationId: string,
+    actor: AiActor,
     texts: string[],
+    signal?: AbortSignal,
   ): Promise<{ embeddings: number[][]; model: string }> {
     if (texts.length === 0) {
       return { embeddings: [], model: this.resolveEmbeddingModel() };
     }
 
-    await this.organizationsService.requireMembership(userId, organizationId);
-    this.rateLimiter.assertWithinLimits(userId, organizationId);
+    if (signal?.aborted) {
+      const abortErr = new Error('Aborted');
+      abortErr.name = 'AbortError';
+      throw abortErr;
+    }
+
+    await this.authorizeActor(actor);
     this.assertAiConfigured();
 
     const model = this.resolveEmbeddingModel();
     const startedAt = Date.now();
+    const organizationId = actor.organizationId;
+    const userId = actorUserId(actor);
 
     try {
-      const raw = await this.aiProvider.embed(texts);
+      const raw = await this.aiProvider.embed(texts, signal ? { signal } : undefined);
       const embeddings = Array.isArray(raw[0])
         ? (raw as number[][])
         : ([raw] as number[][]);
@@ -245,6 +257,9 @@ export class AiService {
 
       return { embeddings, model };
     } catch (error) {
+      if (signal?.aborted || this.isAbortError(error)) {
+        throw error;
+      }
       this.logUsageFireAndForget({
         organizationId,
         userId,
@@ -263,27 +278,35 @@ export class AiService {
     return process.env.AI_EMBEDDING_MODEL?.trim() || 'text-embedding-3-small';
   }
 
-  private async prepare(
-    userId: string,
-    organizationId: string,
-    dto: ChatCompletionDto,
-  ): Promise<PreparedChat> {
-    await this.organizationsService.requireMembership(userId, organizationId);
-    this.rateLimiter.assertWithinLimits(userId, organizationId);
+  private async prepare(actor: AiActor, dto: ChatCompletionDto): Promise<PreparedChat> {
+    await this.authorizeActor(actor);
     this.assertAiConfigured();
 
+    const organizationId = actor.organizationId;
     const messages = this.promptAssembler.assemble(dto);
     const model = this.modelRouter.resolveChatModel(organizationId);
     const maxTokens = dto.maxTokens ?? DEFAULT_MAX_TOKENS;
 
     return {
       organizationId,
-      userId,
+      userId: actorUserId(actor),
       model,
       messages,
       maxTokens,
       temperature: dto.temperature,
     };
+  }
+
+  /**
+   * Member: requireMembership + AiRateLimiter.
+   * Organization: caller already authenticated (e.g. publishable key); skip both.
+   */
+  private async authorizeActor(actor: AiActor): Promise<void> {
+    if (actor.type === 'organization') {
+      return;
+    }
+    await this.organizationsService.requireMembership(actor.userId, actor.organizationId);
+    this.rateLimiter.assertWithinLimits(actor.userId, actor.organizationId);
   }
 
   /** Fail closed before SSE headers / provider I/O when the API key is missing. */
@@ -314,7 +337,7 @@ export class AiService {
 
   private logUsageFireAndForget(input: {
     organizationId: string;
-    userId: string;
+    userId: string | null;
     model: string;
     operation: 'chat' | 'chat_stream' | 'embed';
     usage: ChatUsage;
