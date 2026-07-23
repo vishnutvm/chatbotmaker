@@ -37,4 +37,12 @@ describe('isPublicApiPath', () => {
       }),
     ).toBe(true);
   });
+
+  it('returns false when path, originalUrl, and url are all empty', () => {
+    expect(isPublicApiPath({ path: '', originalUrl: '', url: '' })).toBe(false);
+  });
+
+  it('returns false when pathname is empty after stripping query-only raw', () => {
+    expect(isPublicApiPath({ path: '', originalUrl: '?', url: '' })).toBe(false);
+  });
 });
