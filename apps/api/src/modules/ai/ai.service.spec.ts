@@ -295,6 +295,18 @@ describe('AiService', () => {
     expect(aiProvider.embed).not.toHaveBeenCalled();
   });
 
+  it('throws AbortError immediately when embed signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      service.embed(memberActor(userId, orgId), ['hello'], controller.signal),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+
+    expect(aiProvider.embed).not.toHaveBeenCalled();
+    expect(usageRepository.create).not.toHaveBeenCalled();
+  });
+
   it('normalizes a single embedding vector into a batch array', async () => {
     aiProvider.embed.mockResolvedValue([0.1, 0.2] as never);
 
@@ -323,6 +335,19 @@ describe('AiService', () => {
         errorCode: 'AI_PROVIDER_ERROR',
       }),
     );
+  });
+
+  it('rethrows AbortError from embed provider without recording usage', async () => {
+    const abortErr = new Error('Aborted');
+    abortErr.name = 'AbortError';
+    aiProvider.embed.mockRejectedValue(abortErr);
+
+    await expect(service.embed(memberActor(userId, orgId), ['hello'])).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+
+    await Promise.resolve();
+    expect(usageRepository.create).not.toHaveBeenCalled();
   });
 
   it('emits synthetic done when stream ends without a done chunk', async () => {

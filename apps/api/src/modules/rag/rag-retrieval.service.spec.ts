@@ -135,6 +135,20 @@ describe('RagRetrievalService', () => {
       expect(result).toEqual(chunks);
     });
 
+    it('throws AbortError when signal aborts after embed succeeds', async () => {
+      const controller = new AbortController();
+      aiService.embed.mockImplementation(async () => {
+        controller.abort();
+        return { embeddings: [[0.1, 0.2]], model: 'text-embedding-3-small' };
+      });
+
+      await expect(
+        service.retrieveForQuery({ ...baseInput, signal: controller.signal }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(chunksRepository.similaritySearch).not.toHaveBeenCalled();
+    });
+
     it('passes custom topK to similaritySearch', async () => {
       aiService.embed.mockResolvedValue({
         embeddings: [[0.5, 0.6]],

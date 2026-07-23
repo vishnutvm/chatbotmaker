@@ -646,6 +646,103 @@ describe('AssistantsService', () => {
         NotFoundException,
       );
     });
+
+    it('returns quietly when signal is already aborted before streaming', async () => {
+      repository.findByIdWithReadyKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        status: 'live',
+        knowledgeSources: [],
+      } as never);
+      const controller = new AbortController();
+      controller.abort();
+
+      const events = [];
+      for await (const event of service.streamLivePublicChat(
+        orgId,
+        assistantId,
+        { messages: [{ role: 'user', content: 'Hi' }] },
+        controller.signal,
+      )) {
+        events.push(event);
+      }
+
+      expect(events).toEqual([]);
+      expect(aiService.stream).not.toHaveBeenCalled();
+    });
+
+    it('returns quietly when signal aborts after prepare completes', async () => {
+      repository.findByIdWithReadyKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        status: 'live',
+        knowledgeSources: [],
+      } as never);
+      const controller = new AbortController();
+      ragRetrieval.formatKnowledgeContext.mockImplementation(() => {
+        controller.abort();
+        return '';
+      });
+
+      const events = [];
+      for await (const event of service.streamLivePublicChat(
+        orgId,
+        assistantId,
+        { messages: [{ role: 'user', content: 'Hi' }] },
+        controller.signal,
+      )) {
+        events.push(event);
+      }
+
+      expect(events).toEqual([]);
+      expect(aiService.stream).not.toHaveBeenCalled();
+    });
+
+    it('propagates AbortError when signal aborts during RAG prepare', async () => {
+      repository.findByIdWithReadyKnowledge.mockResolvedValue({
+        ...baseAssistant,
+        status: 'live',
+        knowledgeSources: [{ id: 'ks-1', status: 'ready', content: 'FAQ' }],
+      } as never);
+      const controller = new AbortController();
+      ragRetrieval.retrieveForQuery.mockImplementation(async () => {
+        controller.abort();
+        return [];
+      });
+
+      await expect(async () => {
+        for await (const _ of service.streamLivePublicChat(
+          orgId,
+          assistantId,
+          { messages: [{ role: 'user', content: 'Hi' }] },
+          controller.signal,
+        )) {
+          // drain
+        }
+      }).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(aiService.stream).not.toHaveBeenCalled();
+    });
+
+    it('prepareAssistantChatContext throws when signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        (
+          service as unknown as {
+            prepareAssistantChatContext: (
+              ...args: unknown[]
+            ) => Promise<unknown>;
+          }
+        ).prepareAssistantChatContext(
+          organizationActor(orgId),
+          { ...baseAssistant, knowledgeSources: [] },
+          [{ role: 'user', content: 'Hi' }],
+          { signal: controller.signal },
+        ),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(ragRetrieval.retrieveForQuery).not.toHaveBeenCalled();
+    });
   });
 
   describe('update', () => {
@@ -683,6 +780,41 @@ describe('AssistantsService', () => {
       );
       expect(result.name).toBe('Renamed');
       expect(result.deployed).toBe(true);
+    });
+
+    it('updates description, purpose, welcomeMessage, tone, and instructions', async () => {
+      organizationsService.requireMembership.mockResolvedValue({
+        organization: { id: orgId },
+        membership: { role: 'owner' },
+      });
+      repository.findById.mockResolvedValue(baseAssistant as never);
+      repository.update.mockResolvedValue({
+        ...baseAssistant,
+        description: 'Desc',
+        purpose: 'customer_support',
+        welcomeMessage: 'Welcome',
+        tone: 'friendly',
+        instructions: 'Be helpful',
+      } as never);
+
+      await service.update(userId, orgId, assistantId, {
+        description: ' Desc ',
+        purpose: 'customer_support',
+        welcomeMessage: ' Welcome ',
+        tone: 'friendly',
+        instructions: ' Be helpful ',
+      });
+
+      expect(repository.update).toHaveBeenCalledWith(
+        assistantId,
+        expect.objectContaining({
+          description: 'Desc',
+          purpose: 'customer_support',
+          welcomeMessage: 'Welcome',
+          tone: 'friendly',
+          instructions: 'Be helpful',
+        }),
+      );
     });
 
     it('forbids members from changing status', async () => {

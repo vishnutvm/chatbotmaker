@@ -123,4 +123,13 @@ describe('PublishableKeyRateLimiter', () => {
     expect(() => limiter.assertBootstrap('key-1')).not.toThrow();
     expect(() => limiter.assertChat('key-2', 'org-1')).not.toThrow();
   });
+
+  it('assertWithinLimits delegates to assertBootstrap', () => {
+    for (let i = 0; i < 60; i += 1) {
+      limiter.assertWithinLimits('key-legacy');
+    }
+    expect(() => limiter.assertWithinLimits('key-legacy')).toThrow(HttpException);
+    expect(() => limiter.assertChat('key-legacy', 'org-1')).not.toThrow();
+  });
 });
+
