@@ -17,7 +17,7 @@ export class WidgetBootstrapService {
     keyCtx: PublishableKeyRequestContext,
     assistantId: string,
   ): Promise<WidgetBootstrapDto> {
-    this.rateLimiter.assertWithinLimits(keyCtx.keyId);
+    this.rateLimiter.assertBootstrap(keyCtx.keyId);
 
     const display = await this.assistantsService.getLivePublicDisplay(
       keyCtx.organizationId,

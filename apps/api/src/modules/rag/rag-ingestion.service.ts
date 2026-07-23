@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { memberActor } from '../ai/ai-actor';
 import { AiService } from '../ai/ai.service';
 import { chunkText } from './chunking';
 import { DocumentChunksRepository } from './document-chunks.repository';
@@ -45,7 +46,10 @@ export class RagIngestionService {
 
       for (let i = 0; i < texts.length; i += EMBED_BATCH_SIZE) {
         const batch = texts.slice(i, i + EMBED_BATCH_SIZE);
-        const result = await this.aiService.embed(userId, organizationId, batch);
+        const result = await this.aiService.embed(
+          memberActor(userId, organizationId),
+          batch,
+        );
         model = result.model;
         embeddings.push(...result.embeddings);
       }

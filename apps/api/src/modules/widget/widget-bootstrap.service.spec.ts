@@ -4,13 +4,13 @@ import { WidgetBootstrapService } from './widget-bootstrap.service';
 describe('WidgetBootstrapService', () => {
   let assistantsService: { getLivePublicDisplay: jest.Mock };
   let publishableKeysService: { markUsed: jest.Mock };
-  let rateLimiter: { assertWithinLimits: jest.Mock };
+  let rateLimiter: { assertBootstrap: jest.Mock };
   let service: WidgetBootstrapService;
 
   beforeEach(() => {
     assistantsService = { getLivePublicDisplay: jest.fn() };
     publishableKeysService = { markUsed: jest.fn().mockResolvedValue(undefined) };
-    rateLimiter = { assertWithinLimits: jest.fn() };
+    rateLimiter = { assertBootstrap: jest.fn() };
     service = new WidgetBootstrapService(
       assistantsService as never,
       publishableKeysService as never,
@@ -32,7 +32,7 @@ describe('WidgetBootstrapService', () => {
       'asst-1',
     );
 
-    expect(rateLimiter.assertWithinLimits).toHaveBeenCalledWith('key-1');
+    expect(rateLimiter.assertBootstrap).toHaveBeenCalledWith('key-1');
     expect(assistantsService.getLivePublicDisplay).toHaveBeenCalledWith('org-1', 'asst-1');
     expect(result.name).toBe('Bot');
     expect(publishableKeysService.markUsed).toHaveBeenCalledWith('key-1');

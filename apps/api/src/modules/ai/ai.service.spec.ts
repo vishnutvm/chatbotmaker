@@ -6,6 +6,7 @@ import {
 import type { AIProvider, ChatResult } from '../../infrastructure/ai/ai.interface';
 import type { OrganizationsService } from '../organizations/organizations.service';
 import { AiRateLimiter } from './ai-rate-limiter';
+import { memberActor, organizationActor } from './ai-actor';
 import { AiService } from './ai.service';
 import type { AiUsageRepository } from './ai-usage.repository';
 import { ModelRouter } from './model-router';
@@ -69,7 +70,7 @@ describe('AiService', () => {
     };
     aiProvider.chat.mockResolvedValue(result);
 
-    const response = await service.complete(userId, orgId, {
+    const response = await service.complete(memberActor(userId, orgId), {
       messages: [{ role: 'user', content: 'Hi' }],
     });
 
@@ -108,7 +109,7 @@ describe('AiService', () => {
     );
 
     await expect(
-      service.complete(userId, orgId, {
+      service.complete(memberActor(userId, orgId), {
         messages: [{ role: 'user', content: 'Hi' }],
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -126,7 +127,7 @@ describe('AiService', () => {
     );
 
     await expect(
-      service.complete(userId, orgId, {
+      service.complete(memberActor(userId, orgId), {
         messages: [{ role: 'user', content: 'Hi' }],
       }),
     ).rejects.toBeInstanceOf(BadGatewayException);
@@ -153,7 +154,7 @@ describe('AiService', () => {
     });
 
     await expect(
-      service.complete(userId, orgId, {
+      service.complete(memberActor(userId, orgId), {
         messages: [{ role: 'user', content: 'Hi' }],
       }),
     ).resolves.toMatchObject({ content: 'ok' });
@@ -171,7 +172,7 @@ describe('AiService', () => {
     });
 
     const events = [];
-    for await (const event of service.stream(userId, orgId, {
+    for await (const event of service.stream(memberActor(userId, orgId), {
       messages: [{ role: 'user', content: 'Hi' }],
     })) {
       events.push(event);
@@ -203,7 +204,7 @@ describe('AiService', () => {
     });
 
     const events = [];
-    for await (const event of service.stream(userId, orgId, {
+    for await (const event of service.stream(memberActor(userId, orgId), {
       messages: [{ role: 'user', content: 'Hi' }],
     })) {
       events.push(event);
@@ -225,7 +226,7 @@ describe('AiService', () => {
     const events: unknown[] = [];
     await expect(
       (async () => {
-        for await (const event of service.stream(userId, orgId, {
+        for await (const event of service.stream(memberActor(userId, orgId), {
           messages: [{ role: 'user', content: 'Hi' }],
         })) {
           events.push(event);
@@ -243,10 +244,10 @@ describe('AiService', () => {
       [0.3, 0.4],
     ]);
 
-    const result = await service.embed(userId, orgId, ['hello', 'world']);
+    const result = await service.embed(memberActor(userId, orgId), ['hello', 'world']);
 
     expect(organizationsService.requireMembership).toHaveBeenCalledWith(userId, orgId);
-    expect(aiProvider.embed).toHaveBeenCalledWith(['hello', 'world']);
+    expect(aiProvider.embed).toHaveBeenCalledWith(['hello', 'world'], undefined);
     expect(result.embeddings).toEqual([
       [0.1, 0.2],
       [0.3, 0.4],
@@ -274,13 +275,13 @@ describe('AiService', () => {
     });
 
     for (let i = 0; i < 30; i += 1) {
-      await service.complete(`${userId}-rl`, orgId, {
+      await service.complete(memberActor(`${userId}-rl`, orgId), {
         messages: [{ role: 'user', content: 'Hi' }],
       });
     }
 
     await expect(
-      service.complete(`${userId}-rl`, orgId, {
+      service.complete(memberActor(`${userId}-rl`, orgId), {
         messages: [{ role: 'user', content: 'Hi' }],
       }),
     ).rejects.toMatchObject({ status: 429 });
@@ -289,7 +290,7 @@ describe('AiService', () => {
   });
 
   it('returns empty embeddings without calling provider for empty input', async () => {
-    const result = await service.embed(userId, orgId, []);
+    const result = await service.embed(memberActor(userId, orgId), []);
     expect(result.embeddings).toEqual([]);
     expect(aiProvider.embed).not.toHaveBeenCalled();
   });
@@ -297,7 +298,7 @@ describe('AiService', () => {
   it('normalizes a single embedding vector into a batch array', async () => {
     aiProvider.embed.mockResolvedValue([0.1, 0.2] as never);
 
-    const result = await service.embed(userId, orgId, ['hello']);
+    const result = await service.embed(memberActor(userId, orgId), ['hello']);
     expect(result.embeddings).toEqual([[0.1, 0.2]]);
   });
 
@@ -310,7 +311,7 @@ describe('AiService', () => {
       }),
     );
 
-    await expect(service.embed(userId, orgId, ['hello'])).rejects.toBeInstanceOf(
+    await expect(service.embed(memberActor(userId, orgId), ['hello'])).rejects.toBeInstanceOf(
       BadGatewayException,
     );
 
@@ -330,7 +331,7 @@ describe('AiService', () => {
     });
 
     const events = [];
-    for await (const event of service.stream(userId, orgId, {
+    for await (const event of service.stream(memberActor(userId, orgId), {
       messages: [{ role: 'user', content: 'Hi' }],
     })) {
       events.push(event);
@@ -351,7 +352,7 @@ describe('AiService', () => {
     });
 
     const events = [];
-    for await (const event of service.stream(userId, orgId, {
+    for await (const event of service.stream(memberActor(userId, orgId), {
       messages: [{ role: 'user', content: 'Hi' }],
     })) {
       events.push(event);
@@ -376,9 +377,7 @@ describe('AiService', () => {
     });
 
     const events = [];
-    for await (const event of service.stream(
-      userId,
-      orgId,
+    for await (const event of service.stream(memberActor(userId, orgId),
       { messages: [{ role: 'user', content: 'Hi' }] },
       controller.signal,
     )) {
@@ -396,7 +395,7 @@ describe('AiService', () => {
     });
 
     const events = [];
-    for await (const event of service.stream(userId, orgId, {
+    for await (const event of service.stream(memberActor(userId, orgId), {
       messages: [{ role: 'user', content: 'Hi' }],
     })) {
       events.push(event);
@@ -414,9 +413,7 @@ describe('AiService', () => {
     });
 
     const events = [];
-    for await (const event of service.stream(
-      userId,
-      orgId,
+    for await (const event of service.stream(memberActor(userId, orgId),
       { messages: [{ role: 'user', content: 'Hi' }] },
       controller.signal,
     )) {
@@ -436,7 +433,7 @@ describe('AiService', () => {
     );
 
     await expect(
-      service.complete(userId, orgId, { messages: [{ role: 'user', content: 'Hi' }] }),
+      service.complete(memberActor(userId, orgId), { messages: [{ role: 'user', content: 'Hi' }] }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
 
     await Promise.resolve();
@@ -452,7 +449,7 @@ describe('AiService', () => {
     aiProvider.chat.mockRejectedValue(new Error('socket hang up'));
 
     await expect(
-      service.complete(userId, orgId, { messages: [{ role: 'user', content: 'Hi' }] }),
+      service.complete(memberActor(userId, orgId), { messages: [{ role: 'user', content: 'Hi' }] }),
     ).rejects.toThrow('socket hang up');
 
     await Promise.resolve();
@@ -474,7 +471,7 @@ describe('AiService', () => {
     });
 
     const events = [];
-    for await (const event of service.stream(userId, orgId, {
+    for await (const event of service.stream(memberActor(userId, orgId), {
       messages: [{ role: 'user', content: 'Hi' }],
     })) {
       events.push(event);
@@ -499,12 +496,90 @@ describe('AiService', () => {
       usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
     });
 
-    const response = await service.complete(userId, orgId, {
+    const response = await service.complete(memberActor(userId, orgId), {
       messages: [{ role: 'user', content: 'Hi' }],
     });
 
     expect(response.id).toMatch(/^chatcmpl_[a-f0-9]+$/);
     expect(response.model).toBe('gpt-4o-mini');
     expect(response.content).toBe('');
+  });
+
+  describe('organization actor', () => {
+    it('skips membership and AiRateLimiter; records usage with null userId', async () => {
+      aiProvider.chat.mockResolvedValue({
+        id: 'chatcmpl_org',
+        model: 'gpt-4o-mini',
+        content: 'public reply',
+        finishReason: 'stop',
+        usage: { promptTokens: 4, completionTokens: 2, totalTokens: 6 },
+      });
+
+      const response = await service.complete(organizationActor(orgId), {
+        messages: [{ role: 'user', content: 'Hours?' }],
+      });
+
+      expect(organizationsService.requireMembership).not.toHaveBeenCalled();
+      expect(response.content).toBe('public reply');
+
+      await Promise.resolve();
+      expect(usageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: orgId,
+          userId: null,
+          operation: 'chat',
+          status: 'success',
+        }),
+      );
+    });
+
+    it('streams with null userId usage and skips membership', async () => {
+      aiProvider.stream.mockImplementation(async function* () {
+        yield { type: 'delta' as const, content: 'Hi' };
+        yield {
+          type: 'done' as const,
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        };
+      });
+
+      const events = [];
+      for await (const event of service.stream(organizationActor(orgId), {
+        messages: [{ role: 'user', content: 'Hi' }],
+      })) {
+        events.push(event);
+      }
+
+      expect(organizationsService.requireMembership).not.toHaveBeenCalled();
+      expect(events[0]).toEqual({
+        event: 'meta',
+        data: { model: 'gpt-4o-mini' },
+      });
+
+      await Promise.resolve();
+      expect(usageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: null,
+          operation: 'chat_stream',
+          status: 'success',
+        }),
+      );
+    });
+
+    it('embeds with null userId and skips membership / member rate limit', async () => {
+      aiProvider.embed.mockResolvedValue([[0.1, 0.2]]);
+
+      await service.embed(organizationActor(orgId), ['query']);
+
+      expect(organizationsService.requireMembership).not.toHaveBeenCalled();
+      await Promise.resolve();
+      expect(usageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: null,
+          operation: 'embed',
+          status: 'success',
+        }),
+      );
+    });
   });
 });

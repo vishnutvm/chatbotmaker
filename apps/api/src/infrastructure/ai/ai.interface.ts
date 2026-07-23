@@ -32,10 +32,15 @@ export type ChatStreamChunk =
   | { type: 'delta'; content: string }
   | { type: 'done'; finishReason: string | null; usage: ChatUsage; id?: string };
 
+export interface EmbedParams {
+  /** AbortSignal for canceling in-flight embedding requests. */
+  signal?: AbortSignal;
+}
+
 export interface AIProvider {
   chat(params: ChatParams): Promise<ChatResult>;
   stream(params: ChatParams): AsyncIterable<ChatStreamChunk>;
-  embed(input: string | string[]): Promise<number[] | number[][]>;
+  embed(input: string | string[], options?: EmbedParams): Promise<number[] | number[][]>;
 }
 
 export const AI_PROVIDER = Symbol('AI_PROVIDER');

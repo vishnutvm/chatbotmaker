@@ -133,15 +133,21 @@ export class OpenAiProvider implements AIProvider {
     };
   }
 
-  async embed(input: string | string[]): Promise<number[] | number[][]> {
+  async embed(
+    input: string | string[],
+    options?: { signal?: AbortSignal },
+  ): Promise<number[] | number[][]> {
     const client = this.getClient();
     const model = process.env.AI_EMBEDDING_MODEL?.trim() || 'text-embedding-3-small';
 
     try {
-      const response = await client.embeddings.create({
-        model,
-        input,
-      });
+      const response = await client.embeddings.create(
+        {
+          model,
+          input,
+        },
+        options?.signal ? { signal: options.signal } : undefined,
+      );
 
       const vectors = response.data
         .slice()

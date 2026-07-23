@@ -1,6 +1,6 @@
 # Embeddable Widget (Phase 7)
 
-**Status:** In progress — CDN hosting path (GCS) + `pk_live` auth + dashboard embed snippet  
+**Status:** In progress — CDN hosting path (GCS) + `pk_live` auth + dashboard embed snippet + **live SSE chat**  
 **Package:** `apps/widget` (`@genie/widget`)  
 **Roadmap:** Phase 7 — Widget
 
@@ -12,6 +12,7 @@
 | Public API | `GenieWidget.init` / `open` / `close` / `destroy` / `version` |
 | Bubble + panel | Floating FAB + Shadow DOM chat panel |
 | **`pk_live` auth** | Client validates `pk_live_…`; calls public bootstrap with `X-Genie-Public-Key` |
+| **Live SSE chat** | After bootstrap, composer streams via public widget chat API (no local placeholder) |
 | **Dashboard embed snippet** | Deploy tab + wizard — create `pk_live`, copy HTML snippet |
 | **GCS CDN path** | Dedicated bucket + deploy scripts + CI artifact; set `NEXT_PUBLIC_WIDGET_SCRIPT_URL` when live |
 | Themes | `theme: 'light' \| 'dark' \| 'auto'` (default `auto`) |
@@ -40,7 +41,7 @@
 - **Key issuance:** owner/admin `POST /api/v1/organizations/:id/public-keys` (see `docs/api/publishable-keys.md`).
 - **Dashboard UI:** `apps/web` Deploy tab (`/dashboard/assistants/:id/deploy`) — `EmbedSnippetPanel` lists keys, creates `pk_live`, builds snippet via `buildEmbedSnippet`.
 - **Bootstrap:** `GET /api/v1/public/widget/bootstrap?assistantId=…` with `X-Genie-Public-Key` (see `docs/api/widget-public.md`).
-- **Live chat / SSE** is deferred — composer shows a local placeholder assistant reply after bootstrap succeeds.
+- **Live chat / SSE:** `POST /api/v1/public/widget/chat/stream` with `X-Genie-Public-Key` — contract [`docs/api/widget-public-chat-stream.md`](../api/widget-public-chat-stream.md); decision [`docs/adr/0007-public-widget-chat-sse.md`](../adr/0007-public-widget-chat-sse.md). Prompt/RAG match authenticated assistant chat; no server-side conversation persistence in this slice. Public `meta` is `{ model }` only; chat RL is key/org/IP after live-assistant resolve.
 - Global name is **`GenieWidget`**. Exported surface: `init`, `open`, `close`, `destroy`, `version`.
 
 ## Dashboard embed snippet generator
@@ -64,11 +65,12 @@
 
 **UI states:** loading, error (retry), empty (create key), not-live (deploy first), ready (snippet + copy).
 
-## Auth UI states
+## Auth / chat UI states
 
 1. **Loading** — Connecting…; composer disabled while bootstrap runs.
-2. **Ready** — Welcome message applied; composer enabled.
-3. **Error** — Invalid/revoked key, missing assistant, or network; clear in-panel message.
+2. **Ready** — Welcome message applied; composer enabled; sends stream via public chat SSE.
+3. **Streaming** — Token deltas render in-panel; abort on panel close / destroy.
+4. **Error** — Invalid/revoked key, missing assistant, rate limit, or network; clear in-panel message.
 
 ## Build, CDN deploy & verify
 
@@ -85,10 +87,12 @@ pnpm --filter @genie/web test   # embed-snippet unit tests
 
 CI: `.github/workflows/deploy-widget-cdn.yml` builds and uploads a `widget.js` artifact on `main`; GCS publish is gated on `ENABLE_WIDGET_CDN_DEPLOY` + GCP secrets.
 
-## Out of scope (later P7 P0s)
+## Out of scope (later)
 
-- Live assistant streaming over the public widget API
+- Server-side conversation persistence / inbox for widget sessions
+- Domain allowlists for publishable keys (revoke + rate limits remain the MVP mitigation)
 - Long-cache versioned filenames (`widget-<semver>.js`) — optional Phase 10 hardening
+- Multi-instance shared rate limits — Phase 10 Redis (in-memory buckets today)
 
 ## Architecture decisions
 
@@ -99,3 +103,4 @@ CI: `.github/workflows/deploy-widget-cdn.yml` builds and uploads a `widget.js` a
 5. **Tenant from key** — server derives org from hashed key; assistant must be `live` and same-org.
 6. **Snippet builder in web lib** — pure function `buildEmbedSnippet`; no secrets in repo.
 7. **CDN = GCS** — consolidated with Cloud Run ops; see ADR 0006 (supersedes Cloudflare R2 ADR 0005).
+8. **Public chat SSE** — organization `AiActor` + separate chat rate limits; see ADR 0007.

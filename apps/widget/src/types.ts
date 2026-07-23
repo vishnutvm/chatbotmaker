@@ -23,6 +23,22 @@ export interface WidgetBootstrapResult {
   appearance: Record<string, unknown>;
 }
 
+/** Chat turn sent to public widget stream (no system role). */
+export interface WidgetChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/** Payload from SSE `done` event (AI U1 shape). */
+export interface WidgetChatStreamDone {
+  finishReason: string | null;
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
+}
+
 export interface GenieWidgetApi {
   init: (config: GenieWidgetConfig) => void;
   destroy: () => void;

@@ -27,4 +27,4 @@ The embeddable widget accepts `apiKey` + `assistantId` but previously only valid
 
 - Keys will appear in page source — treat as publishable; support revoke/rotation.
 - No domain allowlist in this slice (accepted risk until later P7/P10 hardening).
-- Chat/SSE over public API remains a later task.
+- Chat/SSE over public API: see ADR 0007 (`POST /api/v1/public/widget/chat/stream`).

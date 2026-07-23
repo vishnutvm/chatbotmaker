@@ -1,5 +1,5 @@
 /**
- * Layer A tests for the minified IIFE bundle (bubble + panel UI + pk_live bootstrap).
+ * Layer A tests for the minified IIFE bundle (bubble + panel UI + pk_live bootstrap + SSE chat).
  * Run after `pnpm build` — invoked by package.json `test` script.
  */
 import assert from 'node:assert/strict';
@@ -18,7 +18,71 @@ const VALID_KEY = 'pk_live_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcd';
 const VALID_KEY_2 = 'pk_live_ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210zyxw';
 
 /**
- * @param {{ dark?: boolean, legacyMedia?: boolean, bootstrapOk?: boolean, bootstrapStatus?: number }} [mediaOpts]
+ * Build a fetch Response-like object with a ReadableStream SSE body.
+ * @param {string} sseText
+ * @param {{ ok?: boolean, status?: number, jsonBody?: unknown, signal?: AbortSignal, holdOpen?: boolean }} [opts]
+ */
+function mockSseResponse(sseText, opts = {}) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      if (opts.holdOpen) {
+        // Emit a partial delta then hang until abort/cancel (tests close-abort).
+        controller.enqueue(
+          encoder.encode('event: delta\ndata: {"content":"partial"}\n\n'),
+        );
+        const onAbort = () => {
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
+        };
+        if (opts.signal?.aborted) {
+          onAbort();
+          return;
+        }
+        opts.signal?.addEventListener('abort', onAbort, { once: true });
+        return;
+      }
+      controller.enqueue(encoder.encode(sseText));
+      controller.close();
+    },
+  });
+  return {
+    ok: opts.ok !== false,
+    status: opts.status ?? 200,
+    body: stream,
+    json: async () => opts.jsonBody ?? {},
+  };
+}
+
+const DEFAULT_SSE = [
+  'event: meta',
+  'data: {"organizationId":"org_smoke","model":"gpt-test"}',
+  '',
+  'event: delta',
+  'data: {"content":"Hello"}',
+  '',
+  'event: delta',
+  'data: {"content":" from stream"}',
+  '',
+  'event: done',
+  'data: {"finishReason":"stop","usage":{"promptTokens":1,"completionTokens":2,"totalTokens":3}}',
+  '',
+].join('\n');
+
+/**
+ * @param {{
+ *   dark?: boolean,
+ *   legacyMedia?: boolean,
+ *   bootstrapOk?: boolean,
+ *   bootstrapStatus?: number,
+ *   streamSse?: string,
+ *   streamHttpStatus?: number,
+ *   streamJsonBody?: unknown,
+ *   streamHoldOpen?: boolean,
+ * }} [mediaOpts]
  */
 function loadWidgetWithDom(mediaOpts = {}) {
   const { window, document } = parseHTML('<!doctype html><html><body></body></html>');
@@ -28,6 +92,12 @@ function loadWidgetWithDom(mediaOpts = {}) {
   const legacyMedia = Boolean(mediaOpts.legacyMedia);
   const bootstrapOk = mediaOpts.bootstrapOk !== false;
   const bootstrapStatus = mediaOpts.bootstrapStatus ?? (bootstrapOk ? 200 : 401);
+  const streamHttpStatus = mediaOpts.streamHttpStatus;
+  const streamSse = mediaOpts.streamSse ?? DEFAULT_SSE;
+  const streamHoldOpen = Boolean(mediaOpts.streamHoldOpen);
+
+  /** @type {AbortSignal[]} */
+  const streamSignals = [];
 
   window.matchMedia = (query) => {
     const mql = {
@@ -55,12 +125,29 @@ function loadWidgetWithDom(mediaOpts = {}) {
     return mql;
   };
 
-  /** @type {Array<{ url: string, headers: Record<string, string> }>} */
+  /** @type {Array<{ url: string, method: string, headers: Record<string, string>, body?: string }>} */
   const fetchCalls = [];
   window.fetch = async (input, init = {}) => {
     const url = String(input);
+    const method = String(init.method ?? 'GET').toUpperCase();
     const headers = /** @type {Record<string, string>} */ (init.headers ?? {});
-    fetchCalls.push({ url, headers });
+    const body = typeof init.body === 'string' ? init.body : undefined;
+    fetchCalls.push({ url, method, headers, body });
+
+    if (url.includes('/public/widget/chat/stream')) {
+      const signal = /** @type {AbortSignal | undefined} */ (init.signal);
+      if (signal) streamSignals.push(signal);
+      if (typeof streamHttpStatus === 'number' && streamHttpStatus >= 400) {
+        return {
+          ok: false,
+          status: streamHttpStatus,
+          body: null,
+          json: async () => mediaOpts.streamJsonBody ?? { message: 'fail' },
+        };
+      }
+      return mockSseResponse(streamSse, { signal, holdOpen: streamHoldOpen });
+    }
+
     if (!bootstrapOk) {
       return {
         ok: false,
@@ -89,6 +176,10 @@ function loadWidgetWithDom(mediaOpts = {}) {
     fetch: window.fetch,
     setTimeout: globalThis.setTimeout,
     clearTimeout: globalThis.clearTimeout,
+    TextEncoder: globalThis.TextEncoder,
+    TextDecoder: globalThis.TextDecoder,
+    AbortController: globalThis.AbortController,
+    ReadableStream: globalThis.ReadableStream,
   };
   Object.defineProperty(sandbox, 'globalThis', { value: sandbox });
   vm.createContext(sandbox);
@@ -96,7 +187,7 @@ function loadWidgetWithDom(mediaOpts = {}) {
   const api = /** @type {{ init: Function, destroy: Function, open: Function, close: Function, version: string }} */ (
     sandbox.GenieWidget
   );
-  return { api, document, window, mediaListeners, fetchCalls };
+  return { api, document, window, mediaListeners, fetchCalls, streamSignals };
 }
 
 async function waitForAuth(document, state, timeoutMs = 500) {
@@ -107,6 +198,20 @@ async function waitForAuth(document, state, timeoutMs = 500) {
     await new Promise((r) => setTimeout(r, 10));
   }
   throw new Error(`Timed out waiting for auth=${state}`);
+}
+
+/**
+ * Wait until an assistant bubble contains the expected text (stream finished).
+ */
+async function waitForAssistantText(shadow, expected, timeoutMs = 1000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const botMsgs = shadow.querySelectorAll('.gw-msg[data-role="assistant"]');
+    const last = botMsgs[botMsgs.length - 1];
+    if (last && last.textContent === expected) return last;
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error(`Timed out waiting for assistant text: ${expected}`);
 }
 
 describe('widget.js IIFE bundle', () => {
@@ -128,6 +233,12 @@ describe('widget.js IIFE bundle', () => {
     assert.ok(!/@genie\/web/.test(code));
     assert.ok(!/react-dom/.test(code));
     assert.ok(!/__NEXT_DATA__/.test(code));
+  });
+
+  it('includes live chat stream path (no Phase 7 placeholder)', () => {
+    assert.match(code, /chat\/stream/);
+    assert.ok(!/Phase 7/.test(code));
+    assert.ok(!/Live assistant replies connect in a later/.test(code));
   });
 
   it('exposes GenieWidget.init/open/close/destroy and version on the global', () => {
@@ -352,8 +463,8 @@ describe('widget bubble + panel UI', () => {
     assert.equal(shadow.querySelector('.gw-root').dataset.theme, 'light');
   });
 
-  it('appends user message and placeholder assistant reply on send', async () => {
-    const { api, document } = ctx;
+  it('streams assistant reply via POST chat/stream SSE', async () => {
+    const { api, document, fetchCalls } = ctx;
     api.init({ apiKey: VALID_KEY, assistantId: 'asst_smoke', apiBaseUrl: 'https://api.test' });
     await waitForAuth(document, 'ready');
     api.open();
@@ -361,6 +472,7 @@ describe('widget bubble + panel UI', () => {
     const shadow = document.getElementById('genie-widget-root').shadowRoot;
     const input = shadow.getElementById('gw-input');
     const form = shadow.getElementById('gw-form');
+    const sendBtn = shadow.querySelector('.gw-send');
 
     input.value = 'Hello Genie';
     form.dispatchEvent(
@@ -371,10 +483,181 @@ describe('widget bubble + panel UI', () => {
     assert.equal(userMsgs.length, 1);
     assert.equal(userMsgs[0].textContent, 'Hello Genie');
 
-    await new Promise((r) => setTimeout(r, 300));
+    // Composer disabled while stream in flight (may already finish on sync ReadableStream)
+    await waitForAssistantText(shadow, 'Hello from stream');
+
+    const streamCall = fetchCalls.find((c) => c.url.includes('/public/widget/chat/stream'));
+    assert.ok(streamCall, 'expected POST to chat/stream');
+    assert.equal(streamCall.method, 'POST');
+    assert.equal(streamCall.headers['X-Genie-Public-Key'], VALID_KEY);
+    assert.equal(streamCall.headers.Accept, 'text/event-stream');
+    assert.ok(!streamCall.url.includes(VALID_KEY));
+    assert.ok(!streamCall.url.includes('apiKey'));
+
+    const body = JSON.parse(streamCall.body);
+    assert.equal(body.assistantId, 'asst_smoke');
+    assert.ok(Array.isArray(body.messages));
+    assert.ok(body.messages.some((m) => m.role === 'user' && m.content === 'Hello Genie'));
+
     const botMsgs = shadow.querySelectorAll('.gw-msg[data-role="assistant"]');
-    assert.ok(botMsgs.length >= 2); // welcome + placeholder reply
-    assert.match(botMsgs[botMsgs.length - 1].textContent, /Phase 7/);
+    assert.ok(botMsgs.length >= 2); // welcome + streamed reply
+    assert.equal(botMsgs[botMsgs.length - 1].textContent, 'Hello from stream');
+    assert.ok(!/Phase 7/.test(botMsgs[botMsgs.length - 1].textContent));
+
+    assert.equal(input.disabled, false);
+    assert.equal(sendBtn.disabled, false);
+  });
+
+  it('shows recoverable error on chat stream HTTP 429', async () => {
+    const errCtx = loadWidgetWithDom({ streamHttpStatus: 429 });
+    errCtx.api.init({
+      apiKey: VALID_KEY,
+      assistantId: 'asst_smoke',
+      apiBaseUrl: 'https://api.test',
+    });
+    await waitForAuth(errCtx.document, 'ready');
+    errCtx.api.open();
+
+    const shadow = errCtx.document.getElementById('genie-widget-root').shadowRoot;
+    const input = shadow.getElementById('gw-input');
+    const form = shadow.getElementById('gw-form');
+    const sendBtn = shadow.querySelector('.gw-send');
+
+    input.value = 'Rate limit me';
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    const start = Date.now();
+    let status;
+    while (Date.now() - start < 1000) {
+      status = shadow.getElementById('gw-status');
+      if (status && !status.hidden && /Too many requests/i.test(status.textContent)) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.ok(status && !status.hidden);
+    assert.match(status.textContent, /Too many requests/i);
+    assert.equal(input.disabled, false);
+    assert.equal(sendBtn.disabled, false);
+    errCtx.api.destroy();
+  });
+
+  it('aborts in-flight stream when panel closes', async () => {
+    const holdCtx = loadWidgetWithDom({ streamHoldOpen: true });
+    holdCtx.api.init({
+      apiKey: VALID_KEY,
+      assistantId: 'asst_smoke',
+      apiBaseUrl: 'https://api.test',
+    });
+    await waitForAuth(holdCtx.document, 'ready');
+    holdCtx.api.open();
+
+    const shadow = holdCtx.document.getElementById('genie-widget-root').shadowRoot;
+    const input = shadow.getElementById('gw-input');
+    const form = shadow.getElementById('gw-form');
+    const sendBtn = shadow.querySelector('.gw-send');
+
+    input.value = 'Abort on close';
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    await waitForAssistantText(shadow, 'partial');
+    assert.equal(holdCtx.streamSignals.length, 1);
+    assert.equal(holdCtx.streamSignals[0].aborted, false);
+
+    holdCtx.api.close();
+
+    const start = Date.now();
+    while (Date.now() - start < 1000) {
+      if (holdCtx.streamSignals[0].aborted && !input.disabled) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.equal(holdCtx.streamSignals[0].aborted, true);
+    assert.equal(input.disabled, false);
+    assert.equal(sendBtn.disabled, false);
+
+    // Abort must not surface a visitor error.
+    const status = shadow.getElementById('gw-status');
+    assert.ok(status.hidden || !/Something went wrong|Network error|Connection lost/i.test(status.textContent));
+    holdCtx.api.destroy();
+  });
+
+  it('maps SSE error events to visitor-safe messages (no raw server message)', async () => {
+    const raw =
+      'Upstream model request failed with internal stack trace and org secrets';
+    const errCtx = loadWidgetWithDom({
+      streamSse: [
+        'event: error',
+        `data: {"statusCode":502,"code":"AI_PROVIDER_ERROR","message":${JSON.stringify(raw)}}`,
+        '',
+      ].join('\n'),
+    });
+    errCtx.api.init({
+      apiKey: VALID_KEY,
+      assistantId: 'asst_smoke',
+      apiBaseUrl: 'https://api.test',
+    });
+    await waitForAuth(errCtx.document, 'ready');
+    errCtx.api.open();
+
+    const shadow = errCtx.document.getElementById('genie-widget-root').shadowRoot;
+    const input = shadow.getElementById('gw-input');
+    const form = shadow.getElementById('gw-form');
+
+    input.value = 'Trigger SSE error';
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    const start = Date.now();
+    let status;
+    while (Date.now() - start < 1000) {
+      status = shadow.getElementById('gw-status');
+      if (status && !status.hidden && status.textContent) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.ok(status && !status.hidden);
+    assert.match(status.textContent, /Something went wrong/i);
+    assert.ok(!status.textContent.includes(raw));
+    assert.ok(!/Upstream model|stack trace|org secrets/i.test(status.textContent));
+    errCtx.api.destroy();
+  });
+
+  it('maps SSE error statusCode 429 to rate-limit copy', async () => {
+    const errCtx = loadWidgetWithDom({
+      streamSse: [
+        'event: error',
+        'data: {"statusCode":429,"code":"RATE_LIMITED","message":"key bucket exhausted — retry-after 12s"}',
+        '',
+      ].join('\n'),
+    });
+    errCtx.api.init({
+      apiKey: VALID_KEY,
+      assistantId: 'asst_smoke',
+      apiBaseUrl: 'https://api.test',
+    });
+    await waitForAuth(errCtx.document, 'ready');
+    errCtx.api.open();
+
+    const shadow = errCtx.document.getElementById('genie-widget-root').shadowRoot;
+    const form = shadow.getElementById('gw-form');
+    shadow.getElementById('gw-input').value = 'Rate limited mid-stream';
+    form.dispatchEvent(
+      new shadow.ownerDocument.defaultView.Event('submit', { bubbles: true, cancelable: true }),
+    );
+
+    const start = Date.now();
+    let status;
+    while (Date.now() - start < 1000) {
+      status = shadow.getElementById('gw-status');
+      if (status && !status.hidden && /Too many requests/i.test(status.textContent)) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.ok(status && !status.hidden);
+    assert.match(status.textContent, /Too many requests/i);
+    assert.ok(!/bucket|retry-after/i.test(status.textContent));
+    errCtx.api.destroy();
   });
 
   it('re-init replaces previous mount; destroy removes host', async () => {
