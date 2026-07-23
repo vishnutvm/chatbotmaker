@@ -46,6 +46,29 @@ function statusTone(
   }
 }
 
+function statusLabel(status: BillingSubscriptionStatus): string {
+  switch (status) {
+    case 'none':
+      return 'No subscription';
+    case 'active':
+      return 'Active';
+    case 'trialing':
+      return 'Trial';
+    case 'past_due':
+      return 'Past due';
+    case 'canceled':
+      return 'Canceled';
+    case 'incomplete':
+      return 'Incomplete';
+    case 'incomplete_expired':
+      return 'Expired';
+    case 'unpaid':
+      return 'Unpaid';
+    default:
+      return status;
+  }
+}
+
 function formatPeriodEnd(iso: string | null): string | null {
   if (!iso) return null;
   try {
@@ -164,18 +187,26 @@ export default function Billing() {
         ) : null}
 
         {activeOrg && loading ? (
-          <div className="rounded-xl border border-border bg-surface p-6 space-y-4 animate-pulse">
+          <div
+            className="rounded-xl border border-border bg-surface p-6 space-y-4 animate-pulse"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading billing"
+          >
             <div className="h-6 w-40 rounded bg-surface-muted" />
             <div className="h-4 w-64 rounded bg-surface-muted" />
             <div className="h-10 w-48 rounded bg-surface-muted" />
+            <span className="sr-only">Loading billing…</span>
           </div>
         ) : null}
 
         {activeOrg && error ? (
           <div className="rounded-xl border border-border bg-surface p-6 space-y-3">
-            <p className="text-sm text-foreground">{error}</p>
+            <p className="text-sm text-foreground" role="alert">
+              {error}
+            </p>
             <Button variant="outline" onClick={() => void load()} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-4 w-4" aria-hidden />
               Retry
             </Button>
           </div>
@@ -183,6 +214,15 @@ export default function Billing() {
 
         {activeOrg && !loading && !error && data ? (
           <div className="rounded-xl border border-border bg-surface p-6">
+            {billingFlag === 'success' ? (
+              <div
+                className="mb-4 rounded-lg border border-border bg-surface-muted px-3 py-2 text-sm text-muted-foreground"
+                role="status"
+              >
+                Subscription updating… Stripe may take a moment to confirm. Refreshing plan
+                status.
+              </div>
+            ) : null}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -191,7 +231,9 @@ export default function Billing() {
                   </span>
                   <StatusBadge tone="primary">Current plan</StatusBadge>
                   {data.status !== 'none' ? (
-                    <StatusBadge tone={statusTone(data.status)}>{data.status}</StatusBadge>
+                    <StatusBadge tone={statusTone(data.status)}>
+                      {statusLabel(data.status)}
+                    </StatusBadge>
                   ) : null}
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
@@ -209,10 +251,14 @@ export default function Billing() {
                   <Button
                     variant="outline"
                     disabled={actionLoading !== null}
+                    aria-busy={actionLoading === 'portal'}
                     onClick={() => void openPortal()}
                   >
                     {actionLoading === 'portal' ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Opening portal…
+                      </>
                     ) : (
                       'Manage billing'
                     )}
@@ -221,10 +267,14 @@ export default function Billing() {
                 {data.canCheckout && data.plan === 'free' ? (
                   <Button
                     disabled={actionLoading !== null}
+                    aria-busy={actionLoading === 'checkout'}
                     onClick={() => void startCheckout('starter')}
                   >
                     {actionLoading === 'checkout' ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Upgrading…
+                      </>
                     ) : (
                       'Upgrade'
                     )}
@@ -233,9 +283,17 @@ export default function Billing() {
                 {data.canCheckout && data.plan === 'starter' ? (
                   <Button
                     disabled={actionLoading !== null}
+                    aria-busy={actionLoading === 'checkout'}
                     onClick={() => void startCheckout('pro')}
                   >
-                    Upgrade to Pro
+                    {actionLoading === 'checkout' ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Upgrading…
+                      </>
+                    ) : (
+                      'Upgrade to Pro'
+                    )}
                   </Button>
                 ) : null}
               </div>
@@ -277,7 +335,7 @@ export default function Billing() {
                     <ul className="mt-4 space-y-1.5 text-sm text-foreground">
                       {features.map((f) => (
                         <li key={f} className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-success" /> {f}
+                          <Check className="h-3.5 w-3.5 text-success" aria-hidden /> {f}
                         </li>
                       ))}
                     </ul>
@@ -289,9 +347,17 @@ export default function Billing() {
                       <Button
                         className="mt-5 w-full"
                         disabled={actionLoading !== null}
+                        aria-busy={actionLoading === 'checkout'}
                         onClick={() => void startCheckout(plan.key as 'starter' | 'pro')}
                       >
-                        Upgrade
+                        {actionLoading === 'checkout' ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                            Upgrading…
+                          </>
+                        ) : (
+                          'Upgrade'
+                        )}
                       </Button>
                     ) : (
                       <Button className="mt-5 w-full" variant="outline" disabled>
