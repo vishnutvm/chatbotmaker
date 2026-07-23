@@ -23,8 +23,7 @@ export function messageForHttpStatus(status: number): string {
   if (status === 404) return 'Assistant not available.';
   if (status === 429) return 'Too many requests — try again shortly.';
   if (status === 503) return 'Chat temporarily unavailable.';
-  if (status >= 500) return 'Something went wrong — try again.';
-  return `Request failed (${status}).`;
+  return 'Something went wrong — try again.';
 }
 
 /**
